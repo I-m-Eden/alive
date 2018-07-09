@@ -2,7 +2,7 @@
 #include <cmath>
 struct vector2 {
 	double x, y;
-	vector2() {}
+	vector2() { x = 0; y = 0; }
 	vector2(double X, double Y) { x = X; y = Y; }
 };
 double norm(vector2 p) {

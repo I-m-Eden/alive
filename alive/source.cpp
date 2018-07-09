@@ -36,18 +36,25 @@ void _resume() {
 
 figureimage figure;
 vector2 realp;
-vector<pair<vector2, int> > mp;
+vector<pair<vector2, int> > mp, mpobj;
 bool sighted(vector2 p, int name) {
 	if (name == IDTREE) return (p.x >= - treedemo.r&&p.x <= _winw + treedemo.r&&p.y >= - treedemo.r&&p.y <= _winh + treedemo.r);
 }
 void producemap() {
 	mp.clear();
-	ref(i, 1, 3000)mp.push_back(make_pair(vector2(rand() % 24000 - 12000,rand() % 24000 - 12000), IDTREE));
+	ref(i, 1, 1000)mp.push_back(make_pair(vector2(rand() % 12000 - 6000,rand() % 12000 - 6000), IDTREE));
 }
 void paintmap() {
+	setd(0, 0, GRAY170);
+	for (int i = 0, X = (20 - int(realp.x) % 20); i < 40; ++i, X += 20)
+		pline(X, 0, X, _winh);
+	for (int i = 0, Y = (20 - int(realp.y) % 20); i < 30; ++i, Y += 20)
+		pline(0, Y, _winw,Y);
+	mpobj.clear();
 	for (vector<pair<vector2, int> >::iterator i = mp.begin(); i != mp.end(); i++) {
 		pair<vector2, int> obj = (*i); vector2 p = obj.first-realp+vector2(_winw/2,_winh/2); int name = obj.second;
 		if (!sighted(p, name))continue;
+		mpobj.push_back(make_pair(p, name));
 		if (name == IDTREE) {
 			treedemo.setposition(p.x, p.y);
 			treedemo.paint();
@@ -63,13 +70,16 @@ void _restart1() {
 	while (1) {
 		vector2 ms = vector2(getmousex(hwnd) - _winw / 2, getmousey(hwnd) - _winh / 2);
 		figure.angle = atan2(ms.y, ms.x) + pi / 2;
-		if (GetAsyncKeyState('W') & 0x8000)realp.y--;
-		if (GetAsyncKeyState('S') & 0x8000)realp.y++;
-		if (GetAsyncKeyState('A') & 0x8000)realp.x--;
-		if (GetAsyncKeyState('D') & 0x8000)realp.x++;
+		SetActiveWindow(hwnd);
+		vector2 v;
+		if (GetAsyncKeyState('W') & 0x8000)v.y--;
+		if (GetAsyncKeyState('S') & 0x8000)v.y++;
+		if (GetAsyncKeyState('A') & 0x8000)v.x--;
+		if (GetAsyncKeyState('D') & 0x8000)v.x++;
+		if (v.x || v.y) v = v * (1 / norm(v));
+		realp = realp + v;
 		clearscreen(GRAY200);
 		paintmap();
-		figure.paint();
 		figure.paint();
 		flushpaint();
 		peekmsg(); delay(1);
@@ -119,7 +129,7 @@ void _restart() {
 	int current_p=0;
 	int cury = 70, idealy = 70; 
 	while (1) {
-		peekmsg(); delay(1);
+		peekmsg(); delay(3);
 		b1.listen();
 		b2.listen();
 		b3.listen();
