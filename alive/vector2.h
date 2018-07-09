@@ -17,3 +17,9 @@ vector2 operator-(vector2 a, vector2 b) {
 vector2 operator*(vector2 a, double s) {
 	return vector2(a.x*s, a.y*s);
 }
+double operator*(vector2 a, vector2 b) {
+	return a.x*b.x + a.y*b.y;
+}
+double operator^(vector2 a, vector2 b) { 
+	return a.x*b.y - a.y*b.x; 
+}

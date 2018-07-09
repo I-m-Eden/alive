@@ -37,6 +37,7 @@ void _resume() {
 figureimage figure;
 vector2 realp;
 vector<pair<vector2, int> > mp, mpobj;
+typedef vector<pair<vector2, int>>::iterator it_pvi;
 bool sighted(vector2 p, int name) {
 	if (name == IDTREE) return (p.x >= - treedemo.r&&p.x <= _winw + treedemo.r&&p.y >= - treedemo.r&&p.y <= _winh + treedemo.r);
 }
@@ -49,16 +50,43 @@ void paintmap() {
 	for (int i = 0, X = (20 - int(realp.x) % 20); i < 40; ++i, X += 20)
 		pline(X, 0, X, _winh);
 	for (int i = 0, Y = (20 - int(realp.y) % 20); i < 30; ++i, Y += 20)
-		pline(0, Y, _winw,Y);
+		pline(0, Y, _winw, Y);
 	mpobj.clear();
-	for (vector<pair<vector2, int> >::iterator i = mp.begin(); i != mp.end(); i++) {
-		pair<vector2, int> obj = (*i); vector2 p = obj.first-realp+vector2(_winw/2,_winh/2); int name = obj.second;
+	for (it_pvi i = mp.begin(); i != mp.end(); i++) {
+		pair<vector2, int> obj = (*i); vector2 p = obj.first - realp + vector2(_winw / 2, _winh / 2); int name = obj.second;
 		if (!sighted(p, name))continue;
-		mpobj.push_back(make_pair(p, name));
+		mpobj.push_back(obj);
 		if (name == IDTREE) {
 			treedemo.setposition(p.x, p.y);
 			treedemo.paint();
 		}
+	}
+}
+void adjust(vector2&v) {
+	double a0 = 1e9, a1 = 1e9;
+	double normv = norm(v);
+	for (it_pvi i = mpobj.begin(); i != mpobj.end(); i++) {
+		pair<vector2, int> obj = (*i); vector2 p = obj.first - realp; int name = obj.second;
+		double normp = norm(p);
+		if (name == IDTREE) {
+			if (norm(p) >= treedemo.r + figuredemo.r1 - 1 || (v*p) < 0)continue;
+			if ((v^p) >= 0) a0 = min(a0, acos((v*p) / normv / normp));
+			else a1 = min(a1, acos((v*p) / normv / normp));
+		}
+	}
+	if (a0 > pi / 2 && a1 > pi / 2)return;
+	if (a0 <= pi / 2 && a1 <= pi / 2) {
+		v = vector2(0, 0); return;
+	}
+	if (a0 <= pi / 2) {
+		double a = atan2(v.y, v.x) - (pi / 2 - a0);
+		double nv = normv * cos(pi / 2 - a0);
+		v = vector2(nv*cos(a), nv*sin(a)); return;
+	}
+	if (a1 <= pi / 2) {
+		double a = atan2(v.y, v.x) + (pi / 2 - a1);
+		double nv = normv * cos(pi / 2 - a1);
+		v = vector2(nv*cos(a), nv*sin(a)); return;
 	}
 }
 void _restart1() {
@@ -77,6 +105,7 @@ void _restart1() {
 		if (GetAsyncKeyState('A') & 0x8000)v.x--;
 		if (GetAsyncKeyState('D') & 0x8000)v.x++;
 		if (v.x || v.y) v = v * (1 / norm(v));
+		ref(times, 0, 1)adjust(v);
 		realp = realp + v;
 		clearscreen(GRAY200);
 		paintmap();

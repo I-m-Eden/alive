@@ -45,7 +45,7 @@ public:
 		double X32 = ca*x32 - sa * y32, Y32 = sa*x32 + ca * y32;
 		drawellipse(fc3, X31 + px, Y31 + py, X32 + px, Y32 + py, d3);
 	}
-};
+}figuredemo;
 class treeimage {
 public:
 	int ps, pw, pc;
