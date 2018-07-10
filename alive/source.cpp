@@ -19,7 +19,8 @@
 #include "toolibrary.h"
 #include "coloresource.h"
 #include "imageresource.h"
-using namespace std;
+using namespace std;  
+
 #define ref(i,x,y)for(int i=(x);i<=(y);++i)
 const double pi = acos(-1);
 string constr(int s) {
