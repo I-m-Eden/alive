@@ -315,9 +315,8 @@ int WINAPI WinMain(
 	showwin(nCmdshow);
 
 	srand(time(0));
-	_restart();
 
-	//_main();
+	_main();
 
 	closewin(hwnd);
 }
