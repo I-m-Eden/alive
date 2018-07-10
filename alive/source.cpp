@@ -39,11 +39,13 @@ vector2 realp;
 vector<pair<vector2, int> > mp, mpobj;
 typedef vector<pair<vector2, int>>::iterator it_pvi;
 bool sighted(vector2 p, int name) {
-	if (name == IDTREE) return (p.x >= - treedemo.r&&p.x <= _winw + treedemo.r&&p.y >= - treedemo.r&&p.y <= _winh + treedemo.r);
+	if (name == IDTREE) return (p.x >= -treedemo.r&&p.x <= _winw + treedemo.r&&p.y >= -treedemo.r&&p.y <= _winh + treedemo.r);
+	if (name == IDSTONE) return (p.x >= -stonedemo.r&&p.x <= _winw + stonedemo.r&&p.y >= -stonedemo.r&&p.y <= _winh + stonedemo.r);
 }
 void producemap() {
 	mp.clear();
 	ref(i, 1, 1000)mp.push_back(make_pair(vector2(rand() % 12000 - 6000,rand() % 12000 - 6000), IDTREE));
+	ref(i, 1, 2000)mp.push_back(make_pair(vector2(rand() % 12000 - 6000, rand() % 12000 - 6000), IDSTONE));	
 }
 void paintmap() {
 	setd(0, 0, GRAY170);
@@ -56,6 +58,16 @@ void paintmap() {
 		pair<vector2, int> obj = (*i); vector2 p = obj.first - realp + vector2(_winw / 2, _winh / 2); int name = obj.second;
 		if (!sighted(p, name))continue;
 		mpobj.push_back(obj);
+	}
+	for (it_pvi i = mpobj.begin(); i != mpobj.end(); i++) {
+		pair<vector2, int> obj = (*i); vector2 p = obj.first - realp + vector2(_winw / 2, _winh / 2); int name = obj.second;
+		if (name == IDSTONE) {
+			stonedemo.setposition(p.x, p.y);
+			stonedemo.paint();
+		}
+	}
+	for (it_pvi i = mpobj.begin(); i != mpobj.end(); i++) {
+		pair<vector2, int> obj = (*i); vector2 p = obj.first - realp + vector2(_winw / 2, _winh / 2); int name = obj.second;
 		if (name == IDTREE) {
 			treedemo.setposition(p.x, p.y);
 			treedemo.paint();
@@ -68,6 +80,11 @@ void adjust(vector2&v) {
 	for (it_pvi i = mpobj.begin(); i != mpobj.end(); i++) {
 		pair<vector2, int> obj = (*i); vector2 p = obj.first - realp; int name = obj.second;
 		double normp = norm(p);
+		if (name == IDSTONE) {
+			if (norm(p) >= stonedemo.r + figuredemo.r1 - 1 || (v*p) < 0)continue;
+			if ((v^p) >= 0) a0 = min(a0, acos((v*p) / normv / normp));
+			else a1 = min(a1, acos((v*p) / normv / normp));
+		}
 		if (name == IDTREE) {
 			if (norm(p) >= treedemo.r + figuredemo.r1 - 1 || (v*p) < 0)continue;
 			if ((v^p) >= 0) a0 = min(a0, acos((v*p) / normv / normp));
@@ -119,7 +136,7 @@ void _restart() {
 	clearscreen(GRAY200);
 	beginPdot();
 	ref(i, 0, 600)ref(j, 200, 600) {
-		COLORREF c = hsl2rgb(1.0*i / 600, 1.0*j / 600, 0.2);
+		COLORREF c = hsl2rgb(1.0*i / 600, 1.0*j / 600, 0.314159265358979);
 		Pdot(i + 40, j -80, c);
 	}
 	endPdot();

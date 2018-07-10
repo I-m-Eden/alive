@@ -5,6 +5,7 @@
 #include <iostream>
 using namespace std;
 const int IDTREE = 1;
+const int IDSTONE = 2;
 class figureimage {
 private:
 	void drawellipse(COLORREF fc, double x1, double y1, double x2, double y2, int d) {
@@ -66,3 +67,23 @@ public:
 		pcircle(x, y, r);
 	}
 }treedemo;
+class stoneimage {
+public:
+	int ps, pw, pc;
+	int fc;
+	int r;
+	int x, y;
+	stoneimage() {
+		ps = 0; pw = 0; pc = BLACK;
+		fc = 0xA9A9AC;
+		r = 30;
+	}
+	void setposition(int X, int Y) {
+		x = X; y = Y;
+	}
+	void paint() {
+		setd(ps, pw, pc);
+		setf(fc);
+		pcircle(x, y, r);
+	}
+}stonedemo;
