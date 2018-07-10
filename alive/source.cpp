@@ -74,6 +74,15 @@ void paintmap() {
 		}
 	}
 }
+void paintmist(double p) {
+	beginPdot();
+	double q = 1.0 - p; p = p * 150;
+	for (int i = _pDataSize - 1; i >= 0; --i) {
+		BYTE&P = _pData[i];
+		P = (BYTE)(q*P + p);
+	}
+	endPdot();
+}
 void gettouch() {
 	mptch.clear();
 	for (it_pvi i = mpobj.begin(); i != mpobj.end(); i++) {
@@ -122,22 +131,36 @@ void _restart1() {
 	producemap();
 	realp = { 0,0 };
 	figure.angle = 0;
+	int tick = 0;
+	int fps = 50, t = 0, rest = 0; DWORD last = GetTickCount(); 
+	double velocity = 2.0;
 	while (1) {
+		tick++;
 		vector2 ms = vector2(getmousex(hwnd) - _winw / 2, getmousey(hwnd) - _winh / 2);
 		figure.angle = atan2(ms.y, ms.x) + pi / 2;
 		SetActiveWindow(hwnd);
 		vector2 v;
-		if (GetAsyncKeyState('W') & 0x8000)v.y--;
-		if (GetAsyncKeyState('S') & 0x8000)v.y++;
-		if (GetAsyncKeyState('A') & 0x8000)v.x--;
-		if (GetAsyncKeyState('D') & 0x8000)v.x++;
-		if (v.x || v.y) v = v * (1 / norm(v));
+		if (GetAsyncKeyState('W') & 0x8000)v.y-=1;
+		if (GetAsyncKeyState('S') & 0x8000)v.y+=1;
+		if (GetAsyncKeyState('A') & 0x8000)v.x-=1;
+		if (GetAsyncKeyState('D') & 0x8000)v.x+=1;
+		if (v.x || v.y) v = v * (velocity / norm(v));
 		gettouch();
 		ref(times, 0, 1)adjust(v);
 		realp = realp + v;
+
+		t++;
 		clearscreen(GRAY200);
 		paintmap();
 		figure.paint();
+		paintmist(0.25*sin(2*pi*tick/500)+0.5);
+
+		if (GetTickCount() >= last+1000) {
+			last += 1000; rest = t; t = 0;
+		}
+		sett(GRAY80, 30, 0, "");
+		ptext(0, 0,("fps: "+constr(rest)).c_str());
+
 		flushpaint();
 		peekmsg(); delay(1);
 	}
@@ -146,8 +169,9 @@ void _restart() {
 	flushmouse();
 	clearscreen(GRAY200);
 	beginPdot();
+	double lightness = pi / 10;
 	ref(i, 0, 600)ref(j, 200, 600) {
-		COLORREF c = hsl2rgb(1.0*i / 600, 1.0*j / 600, 0.314159265358979);
+		COLORREF c = hsl2rgb(1.0*i / 600, 1.0*j / 600, lightness);
 		Pdot(i + 40, j -80, c);
 	}
 	endPdot();
@@ -207,7 +231,7 @@ void _restart() {
 			p[current_p].visibletrans();
 			trgb.clear(GRAY200);
 			if (p[current_p].picked) {
-				COLORREF c = hsl2rgb(1.0*(p[current_p].x - 40) / 600, 1.0*(p[current_p].y + 80) / 600, 0.2);
+				COLORREF c = hsl2rgb(1.0*(p[current_p].x - 40) / 600, 1.0*(p[current_p].y + 80) / 600, lightness);
 				trgb.textcolor = c;
 				string text = "RGB( ";
 				text = text + constr(GetRValue(c)) + ", " + constr(GetGValue(c)) + ", " + constr(GetBValue(c)) + ")";
@@ -218,7 +242,7 @@ void _restart() {
 		p[current_p].listen();
 		if (p[current_p].pickedtrans) {
 
-			COLORREF c = hsl2rgb(1.0*(p[current_p].x - 40) / 600, 1.0*(p[current_p].y + 80) / 600, 0.2);
+			COLORREF c = hsl2rgb(1.0*(p[current_p].x - 40) / 600, 1.0*(p[current_p].y + 80) / 600, lightness);
 			trgb.clear(GRAY200);
 			trgb.textcolor = c;
 			string text = "RGB( ";

@@ -1,6 +1,9 @@
 #pragma once
 #include <Windows.h>
+#include <iostream>
+#include <Vfw.h>
 #include <cmath>
+using namespace std;
 #define rgb RGB
 #define delay Sleep				//delay(x) 延迟x毫秒 
 
@@ -119,10 +122,11 @@ void beginpaint(HWND hwnd, int W, int H);				//准备双缓冲区绘图
 void flushpaint();										//绘制
 void endpaint(HWND hwnd);								//结束绘制
 void beginPdot(bool flag);								//准备开始画像素点(flag为1则清屏)
-void Pdot(int x, int y, BYTE r, BYTE g, BYTE b);		//快速画像素点
-void Pdot(int x, int y, COLORREF c);					//快速画像素点
-void flushPdot();										//更新内存DC
-void endPdot();											//结束绘制像素点
+COLORREF Gdot(int x, int y);							//得到像素点颜色(beginPdot后使用)
+void Pdot(int x, int y, BYTE r, BYTE g, BYTE b);		//快速画像素点(beginPdot后使用)
+void Pdot(int x, int y, COLORREF c);					//快速画像素点(beginPdot后使用)
+void flushPdot();										//更新内存DC(beginPdot后使用)
+void endPdot();											//结束绘制像素点(beginPdot后使用)
 COLORREF hsl2rgb(double h,double s,double l);			//hsl转rgb
 COLORREF inversergb(COLORREF c);						//反转颜色
 COLORREF gdot(int x, int y);							//获取像素颜色
@@ -175,7 +179,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wparam, LPARAM lparam) {
 	switch (uMsg) {
 	case WM_DESTROY: { exit(0); break; }
 	case WM_CREATE: { beginpaint(hwnd, _winw, _winh); break; }
-	case WM_CLOSE: { closewin(hwnd); break; }
+	case WM_CLOSE: { closewin(hwnd); exit(0); break; }
 	case WM_PAINT: { flushpaint(); }
 	}
 	return DefWindowProc(hwnd, uMsg, wparam, lparam);
@@ -341,6 +345,10 @@ void beginPdot(bool flag = 0) {
 	_pData = new BYTE[_pDataSize];
 	if (flag) memset(_pData, 0, _nLnBytes*abs(_bInfo.bmiHeader.biHeight)); 
 	else GetDIBits(_hDCMem, _hBMMem, 0, _bInfo.bmiHeader.biHeight, _pData, &_bInfo, DIB_RGB_COLORS);
+}
+COLORREF Gdot(int x, int y) {
+	int t = (_winh - 1 - y) * _nLnBytes + x * 3;
+	return (*(_pData + t + 2) | (*(_pData + t + 1) << 8) | (*(_pData + t + 0) << 16));
 }
 void Pdot(int x, int y, BYTE r, BYTE g, BYTE b) {
 	int t = (_winh - 1 - y) * _nLnBytes + x * 3;
