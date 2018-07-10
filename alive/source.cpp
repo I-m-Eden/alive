@@ -36,7 +36,7 @@ void _resume() {
 
 figureimage figure;
 vector2 realp;
-vector<pair<vector2, int> > mp, mpobj;
+vector<pair<vector2, int> > mp, mpobj,mptch;
 typedef vector<pair<vector2, int>>::iterator it_pvi;
 bool sighted(vector2 p, int name) {
 	if (name == IDTREE) return (p.x >= -treedemo.r&&p.x <= _winw + treedemo.r&&p.y >= -treedemo.r&&p.y <= _winh + treedemo.r);
@@ -74,19 +74,29 @@ void paintmap() {
 		}
 	}
 }
-void adjust(vector2&v) {
-	double a0 = 1e9, a1 = 1e9;
-	double normv = norm(v);
+void gettouch() {
+	mptch.clear();
 	for (it_pvi i = mpobj.begin(); i != mpobj.end(); i++) {
 		pair<vector2, int> obj = (*i); vector2 p = obj.first - realp; int name = obj.second;
 		double normp = norm(p);
+		if (name == IDSTONE && norm(p) >= stonedemo.r + figuredemo.r1 - 1)continue;
+		if (name == IDTREE && norm(p) >= treedemo.r + figuredemo.r1 - 1)continue;
+		mptch.push_back(obj);
+	}
+}
+void adjust(vector2&v) {
+	double a0 = 1e9, a1 = 1e9;
+	double normv = norm(v);
+	for (it_pvi i = mptch.begin(); i != mptch.end(); i++) {
+		pair<vector2, int> obj = (*i); vector2 p = obj.first - realp; int name = obj.second;
+		double normp = norm(p);
 		if (name == IDSTONE) {
-			if (norm(p) >= stonedemo.r + figuredemo.r1 - 1 || (v*p) < 0)continue;
+			if ((v*p) < 0)continue;
 			if ((v^p) >= 0) a0 = min(a0, acos((v*p) / normv / normp));
 			else a1 = min(a1, acos((v*p) / normv / normp));
 		}
 		if (name == IDTREE) {
-			if (norm(p) >= treedemo.r + figuredemo.r1 - 1 || (v*p) < 0)continue;
+			if ((v*p) < 0)continue;
 			if ((v^p) >= 0) a0 = min(a0, acos((v*p) / normv / normp));
 			else a1 = min(a1, acos((v*p) / normv / normp));
 		}
@@ -122,6 +132,7 @@ void _restart1() {
 		if (GetAsyncKeyState('A') & 0x8000)v.x--;
 		if (GetAsyncKeyState('D') & 0x8000)v.x++;
 		if (v.x || v.y) v = v * (1 / norm(v));
+		gettouch();
 		ref(times, 0, 1)adjust(v);
 		realp = realp + v;
 		clearscreen(GRAY200);
