@@ -23,3 +23,6 @@ double operator*(vector2 a, vector2 b) {
 double operator^(vector2 a, vector2 b) { 
 	return a.x*b.y - a.y*b.x; 
 }
+bool operator ==(vector2 a, vector2 b) {
+	return a.x == b.x&&a.y == b.y;
+}

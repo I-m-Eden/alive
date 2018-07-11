@@ -40,6 +40,12 @@ vector<pair<vector2, int> > mp;
 typedef vector<pair<vector2, int>>::iterator it_pvi;
 vector<it_pvi> mpobj, mptch;
 typedef vector<it_pvi>::iterator it_itpvi;
+it_pvi gainobj; double gainpct;
+vector<pair<vector2, int> > nullpvi; it_pvi null_itpvi;
+void initnullitpvi() {
+	nullpvi.clear(); nullpvi.push_back(make_pair(vector2(), -1)); 
+	null_itpvi = nullpvi.begin();
+}
 bool sighted(vector2 p, int name) {
 	if (name == IDTREE) return (p.x >= -treedemo.r&&p.x <= _winw + treedemo.r&&p.y >= -treedemo.r&&p.y <= _winh + treedemo.r);
 	if (name == IDSTONE) return (p.x >= -stonedemo.r&&p.x <= _winw + stonedemo.r&&p.y >= -stonedemo.r&&p.y <= _winh + stonedemo.r);
@@ -55,24 +61,31 @@ void paintmap() {
 		pline(X, 0, X, _winh);
 	for (int i = 0, Y = (20 - int(realp.y) % 20); i < 30; ++i, Y += 20)
 		pline(0, Y, _winw, Y);
-	mpobj.clear();
-	for (it_pvi i = mp.begin(); i != mp.end(); i++) {
-		pair<vector2, int> obj = (*i); vector2 p = obj.first - realp + vector2(_winw / 2, _winh / 2); int name = obj.second;
-		if (!sighted(p, name))continue;
-		mpobj.push_back(i);
-	}
 	for (it_itpvi i = mpobj.begin(); i != mpobj.end(); i++) {
 		pair<vector2, int> obj = (**i); vector2 p = obj.first - realp + vector2(_winw / 2, _winh / 2); int name = obj.second;
 		if (name == IDSTONE) {
 			stonedemo.setposition(p.x, p.y);
-			stonedemo.paint();
+			if (obj == *gainobj) {
+				COLORREF c = stonedemo.fc; BYTE R = GetRValue(c), G = GetGValue(c), B = GetBValue(c);
+				COLORREF cc = RGB(R*(1 - gainpct), G*(1 - gainpct), B*(1 - gainpct));
+				stonedemo.fc = cc;
+				stonedemo.paint();
+				stonedemo.fc = c;
+			}else stonedemo.paint();
 		}
 	}
 	for (it_itpvi i = mpobj.begin(); i != mpobj.end(); i++) {
 		pair<vector2, int> obj = (**i); vector2 p = obj.first - realp + vector2(_winw / 2, _winh / 2); int name = obj.second;
 		if (name == IDTREE) {
 			treedemo.setposition(p.x, p.y);
-			treedemo.paint();
+			if (obj == *gainobj) {
+				COLORREF c = treedemo.fc; BYTE R = GetRValue(c), G = GetGValue(c), B = GetBValue(c);
+				COLORREF cc = RGB(R*(1 - gainpct), G*(1 - gainpct), B*(1 - gainpct));
+				treedemo.fc = cc;
+				treedemo.paint();
+				treedemo.fc = c;
+			}
+			else treedemo.paint();
 		}
 	}
 }
@@ -85,6 +98,30 @@ void paintmist(double p) {
 	}
 	endPdot();
 }
+/*
+void paintgaining(it_pvi obj, double pct) {
+	if (*obj == *null_itpvi || pct <= 0)return;
+	vector2 p = (*obj).first - realp + vector2(_winw / 2, _winh / 2); int name = (*obj).second;
+	if (name == IDTREE) {
+		setf(0x68B11F);
+		fpie(p.x - treedemo.r, p.y - treedemo.r, p.x + treedemo.r, p.y + treedemo.r, 
+			p.x + 1, p.y, p.x + cos(pct)*100, p.y - sin(pct)*100);
+	}
+	if (name == IDSTONE) {
+		setf(0x727272);
+		fpie(p.x - stonedemo.r, p.y - stonedemo.r, p.x + stonedemo.r, p.y + stonedemo.r, 
+			p.x + 1, p.y, p.x + cos(pct)*100, p.y - sin(pct)*100);
+	}
+}
+*/
+void getsighted() {
+	mpobj.clear();
+	for (it_pvi i = mp.begin(); i != mp.end(); i++) {
+		pair<vector2, int> obj = (*i); vector2 p = obj.first - realp + vector2(_winw / 2, _winh / 2); int name = obj.second;
+		if (!sighted(p, name))continue;
+		mpobj.push_back(i);
+	}
+}
 void gettouch() {
 	mptch.clear();
 	for (it_itpvi i = mpobj.begin(); i != mpobj.end(); i++) {
@@ -94,6 +131,10 @@ void gettouch() {
 		if (name == IDTREE && norm(p) >= treedemo.r + figuredemo.r1 - 1)continue;
 		mptch.push_back(*i);
 	}
+}
+void eraseall(it_pvi it) {
+	mp.erase(it);
+	getsighted(); gettouch();
 }
 void adjust(vector2&v) {
 	double a0 = 1e9, a1 = 1e9;
@@ -136,6 +177,10 @@ void _restart1() {
 	int tick = 0;
 	int fps = 50, t = 0, rest = 0; DWORD last = GetTickCount(); 
 	double velocity = 2.0;
+
+	initnullitpvi();
+	gainobj = null_itpvi; gainpct = 0;
+
 	while (!_isquit) {
 		tick++;
 		
@@ -143,7 +188,12 @@ void _restart1() {
 		figure.angle = atan2(ms.y, ms.x) + pi / 2;
 
 		vector2 v;
-		while (!iswndactive()) { peekmsg(); delay(1); }
+		if (!iswndactive()) {
+			while (!iswndactive()) peekmsg(), delay(1);
+			last = GetTickCount();
+			flushkey(); flushmouse();
+			while (GetAsyncKeyState(VK_ESCAPE) & 0x8000) peekmsg(), delay(1);
+		}
 		if (GetAsyncKeyState('W') & 0x8000)v.y-=1;
 		if (GetAsyncKeyState('S') & 0x8000)v.y+=1;
 		if (GetAsyncKeyState('A') & 0x8000)v.x-=1;
@@ -151,9 +201,29 @@ void _restart1() {
 		if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) break;
 		if (v.x || v.y) v = v * (velocity / norm(v));
 
+		getsighted();
 		gettouch();
 		ref(times, 0, 1)adjust(v);
 		realp = realp + v;
+
+		if (GetAsyncKeyState('Q') & 0x8000) {
+			it_pvi id = null_itpvi;
+			for (it_itpvi i = mptch.begin(); i != mptch.end(); i++)
+				if ((**i) == (*gainobj)) { id = *i; break; }
+			if (*id != *null_itpvi) gainpct += 1.0 / 240; else {
+				for (it_itpvi i = mptch.begin(); i != mptch.end(); i++) {
+					int name = (**i).second;
+					if (name == IDTREE || name == IDSTONE) { id = *i; break; }
+				}
+				gainpct = 0;
+			}
+			gainobj = id;
+			if (gainpct >= 0.5) {
+				eraseall(gainobj);
+				gainobj = null_itpvi; gainpct = 0;
+			}
+		}
+		else gainobj = null_itpvi, gainpct = 0;
 
 		t++;
 		clearscreen(GRAY200);
