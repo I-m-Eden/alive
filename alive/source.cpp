@@ -345,23 +345,6 @@ void _restart() {
 		flushpaint();
 	}
 }
-void showbitmap(int x, int y, int nID) {
-	CBitmap bmp;
-	bmp.LoadBitmapA(nID);
-	BITMAP bmpInfo;
-	bmp.GetBitmap(&bmpInfo);
-	
-	HDC dcMemory = CreateCompatibleDC(_hDCMem);
-	HANDLE pOldBitmap = SelectObject(dcMemory, &bmp);
-	tagRECT rect;
-	GetClientRect(hwnd, &rect);
-	int nX = rect.left + (rect.right-rect.left - bmpInfo.bmWidth) / 2;
-	int nY = rect.top + (rect.bottom - rect.top - bmpInfo.bmHeight) / 2;
-
-	BitBlt(_hDCMem, 0, 0, bmpInfo.bmWidth, bmpInfo.bmHeight, dcMemory, 0, 0, SRCCOPY);
-
-	SelectObject(dcMemory, pOldBitmap);
-}
 tagRGBTRIPLE arrbitmap[800][500];
 void paintbmp() {
 	freopen("back.bmp", "r", stdin);
