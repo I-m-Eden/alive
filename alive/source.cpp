@@ -16,6 +16,7 @@
 #include <utility>
 #include <afxwin.h>
 #include "vector2.h"
+#include "resource.h"
 #include "winpaint.h"
 #include "toolibrary.h"
 #include "coloresource.h"
@@ -345,20 +346,34 @@ void _restart() {
 		flushpaint();
 	}
 }
+BYTE*rcData;
+string UseCustomResource(int rcId) {
+	HRSRC hRsrc = FindResource(_hinst, MAKEINTRESOURCE(rcId), RT_BITMAP);
+	if (NULL == hRsrc) return "rcError1";
+	DWORD dwSize = SizeofResource(_hinst, hRsrc);
+	if (0 == dwSize) return "rcError2";
+	HGLOBAL hGlobal = LoadResource(_hinst, hRsrc);
+	if (NULL == hGlobal) return "rcError3"; 
+	rcData = new BYTE[dwSize];
+	ZeroMemory(rcData, sizeof(BYTE)*dwSize);
+	CopyMemory(rcData, (PBYTE)LockResource(hGlobal), dwSize);
+	return "";
+}
 tagRGBTRIPLE arrbitmap[800][500];
+
 void paintbmp() {
-	freopen("back.bmp", "r", stdin);
-	ref(i, 1, 54)getchar(); int w = 800, h = 500;
+	string fileinfo = UseCustomResource(IDB_BITMAP1);
+	int cnt = 54;
+	int w = 800, h = 500;
 	def(j, h - 1, 0) {
 		ref(i, 0, w - 1) {
-			BYTE b = getchar(), g = getchar(), r = getchar();
+			BYTE r = rcData[cnt++], b = rcData[cnt++], g = rcData[cnt++];
 			arrbitmap[i][j] = { b,g,r };
 		}
-		ref(i, 1, (4 - w * 3 % 4) % 4)getchar();
+		ref(i, 1, (4 - w * 3 % 4) % 4)cnt++;
 	}
-	fclose(stdin);
 	beginPdot();
-	h = 400;
+	h = 500;
 	ref(i, 0, w - 1)ref(j, 0, h - 1) {
 		int r = 0, g = 0, b = 0, t = 0;
 		int p = 4 * j / h + 2;
@@ -367,7 +382,10 @@ void paintbmp() {
 			r += c.rgbtRed; g += c.rgbtGreen; b += c.rgbtBlue; t++;
 		}
 		r /= t; g /= t; b /= t;
-		double q = 1.0*max(j - 300, 0) / 100;
+		double q1 = 1.0*max(j - 300, 0) / 200;
+		double q2 = 1.0 - max(1.0*(sqrt((i - 400)*(i - 400) + (j - 540)*(j - 540)) - 180) / 480, 0);
+		q2 = q2 * q2 * q2;
+		double q = max(q1, q2);
 		r = (1 - q)*r + q * 200; g = (1 - q)*g + q * 200; b = (1 - q)*b + q * 200;
 		Pdot(i, j, r, g, b);
 	}

@@ -124,9 +124,13 @@
   <ItemGroup>
     <ClInclude Include="imageresource.h" />
     <ClInclude Include="coloresource.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="toolibrary.h" />
     <ClInclude Include="vector2.h" />
     <ClInclude Include="winpaint.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="alive.rc" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="back.bmp" />
