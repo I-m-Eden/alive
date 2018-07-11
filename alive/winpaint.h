@@ -93,6 +93,7 @@ bool checkprev(LPCSTR wname);						//判断是否有先前实例
 													//消息函数
 void sendmsg(LPMSG ms);									//发送消息
 bool peekmsg();											//尝试取出消息
+bool iswndactive();										//窗体是否处于激活状态
 bool iskeydown();										//是否按键
 bool iskeydown(int x);									//是否按键x
 int getkeydown();										//获取按键消息
@@ -179,7 +180,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wparam, LPARAM lparam) {
 	switch (uMsg) {
 	case WM_DESTROY: { exit(0); break; }
 	case WM_CREATE: { beginpaint(hwnd, _winw, _winh); break; }
-	case WM_CLOSE: { closewin(hwnd); exit(0); break; }
+	case WM_CLOSE: { closewin(hwnd); break; }
 	case WM_PAINT: { flushpaint(); }
 	}
 	return DefWindowProc(hwnd, uMsg, wparam, lparam);
@@ -258,6 +259,9 @@ bool peekmsg() {
 		return 1;
 	}
 	return 0;
+}
+bool iswndactive() {
+	return GetForegroundWindow() == hwnd;
 }
 bool iskeydown() {
 	for (int i = 1; i <= _msbufn; ++i)if (_msbuf[i].message == WM_KEYDOWN)return 1;

@@ -36,8 +36,10 @@ void _resume() {
 
 figureimage figure;
 vector2 realp;
-vector<pair<vector2, int> > mp, mpobj,mptch;
+vector<pair<vector2, int> > mp;
 typedef vector<pair<vector2, int>>::iterator it_pvi;
+vector<it_pvi> mpobj, mptch;
+typedef vector<it_pvi>::iterator it_itpvi;
 bool sighted(vector2 p, int name) {
 	if (name == IDTREE) return (p.x >= -treedemo.r&&p.x <= _winw + treedemo.r&&p.y >= -treedemo.r&&p.y <= _winh + treedemo.r);
 	if (name == IDSTONE) return (p.x >= -stonedemo.r&&p.x <= _winw + stonedemo.r&&p.y >= -stonedemo.r&&p.y <= _winh + stonedemo.r);
@@ -57,17 +59,17 @@ void paintmap() {
 	for (it_pvi i = mp.begin(); i != mp.end(); i++) {
 		pair<vector2, int> obj = (*i); vector2 p = obj.first - realp + vector2(_winw / 2, _winh / 2); int name = obj.second;
 		if (!sighted(p, name))continue;
-		mpobj.push_back(obj);
+		mpobj.push_back(i);
 	}
-	for (it_pvi i = mpobj.begin(); i != mpobj.end(); i++) {
-		pair<vector2, int> obj = (*i); vector2 p = obj.first - realp + vector2(_winw / 2, _winh / 2); int name = obj.second;
+	for (it_itpvi i = mpobj.begin(); i != mpobj.end(); i++) {
+		pair<vector2, int> obj = (**i); vector2 p = obj.first - realp + vector2(_winw / 2, _winh / 2); int name = obj.second;
 		if (name == IDSTONE) {
 			stonedemo.setposition(p.x, p.y);
 			stonedemo.paint();
 		}
 	}
-	for (it_pvi i = mpobj.begin(); i != mpobj.end(); i++) {
-		pair<vector2, int> obj = (*i); vector2 p = obj.first - realp + vector2(_winw / 2, _winh / 2); int name = obj.second;
+	for (it_itpvi i = mpobj.begin(); i != mpobj.end(); i++) {
+		pair<vector2, int> obj = (**i); vector2 p = obj.first - realp + vector2(_winw / 2, _winh / 2); int name = obj.second;
 		if (name == IDTREE) {
 			treedemo.setposition(p.x, p.y);
 			treedemo.paint();
@@ -85,19 +87,19 @@ void paintmist(double p) {
 }
 void gettouch() {
 	mptch.clear();
-	for (it_pvi i = mpobj.begin(); i != mpobj.end(); i++) {
-		pair<vector2, int> obj = (*i); vector2 p = obj.first - realp; int name = obj.second;
+	for (it_itpvi i = mpobj.begin(); i != mpobj.end(); i++) {
+		pair<vector2, int> obj = (**i); vector2 p = obj.first - realp; int name = obj.second;
 		double normp = norm(p);
 		if (name == IDSTONE && norm(p) >= stonedemo.r + figuredemo.r1 - 1)continue;
 		if (name == IDTREE && norm(p) >= treedemo.r + figuredemo.r1 - 1)continue;
-		mptch.push_back(obj);
+		mptch.push_back(*i);
 	}
 }
 void adjust(vector2&v) {
 	double a0 = 1e9, a1 = 1e9;
 	double normv = norm(v);
-	for (it_pvi i = mptch.begin(); i != mptch.end(); i++) {
-		pair<vector2, int> obj = (*i); vector2 p = obj.first - realp; int name = obj.second;
+	for (it_itpvi i = mptch.begin(); i != mptch.end(); i++) {
+		pair<vector2, int> obj = (**i); vector2 p = obj.first - realp; int name = obj.second;
 		double normp = norm(p);
 		if (name == IDSTONE) {
 			if ((v*p) < 0)continue;
@@ -134,17 +136,21 @@ void _restart1() {
 	int tick = 0;
 	int fps = 50, t = 0, rest = 0; DWORD last = GetTickCount(); 
 	double velocity = 2.0;
-	while (1) {
+	while (!_isquit) {
 		tick++;
+		
 		vector2 ms = vector2(getmousex(hwnd) - _winw / 2, getmousey(hwnd) - _winh / 2);
 		figure.angle = atan2(ms.y, ms.x) + pi / 2;
-		SetActiveWindow(hwnd);
+
 		vector2 v;
+		while (!iswndactive()) { peekmsg(); delay(1); }
 		if (GetAsyncKeyState('W') & 0x8000)v.y-=1;
 		if (GetAsyncKeyState('S') & 0x8000)v.y+=1;
 		if (GetAsyncKeyState('A') & 0x8000)v.x-=1;
 		if (GetAsyncKeyState('D') & 0x8000)v.x+=1;
+		if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) break;
 		if (v.x || v.y) v = v * (velocity / norm(v));
+
 		gettouch();
 		ref(times, 0, 1)adjust(v);
 		realp = realp + v;
@@ -155,9 +161,7 @@ void _restart1() {
 		figure.paint();
 		paintmist(0.25*sin(2*pi*tick/500)+0.5);
 
-		if (GetTickCount() >= last+1000) {
-			last += 1000; rest = t; t = 0;
-		}
+		if (GetTickCount() >= last+1000) { last += 1000; rest = t; t = 0; }
 		sett(GRAY80, 30, 0, "");
 		ptext(0, 0,("fps: "+constr(rest)).c_str());
 
@@ -209,7 +213,7 @@ void _restart() {
 	fg4.setposition((b4.x1 + b4.x2) / 2, (b4.y1 + b4.y2) / 2);
 	int current_p=0;
 	int cury = 70, idealy = 70; 
-	while (1) {
+	while (!_isquit) {
 		peekmsg(); delay(3);
 		b1.listen();
 		b2.listen();
