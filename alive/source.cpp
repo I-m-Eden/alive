@@ -14,6 +14,7 @@
 //
 #include <ctime>
 #include <utility>
+#include <afxwin.h>
 #include "vector2.h"
 #include "winpaint.h"
 #include "toolibrary.h"
@@ -21,6 +22,7 @@
 #include "imageresource.h"
 using namespace std;
 #define ref(i,x,y)for(int i=(x);i<=(y);++i)
+#define def(i,x,y)for(int i=(x);i>=(y);--i)
 const double pi = acos(-1);
 string constr(int s) {
 	string res = "";
@@ -343,6 +345,51 @@ void _restart() {
 		flushpaint();
 	}
 }
+void showbitmap(int x, int y, int nID) {
+	CBitmap bmp;
+	bmp.LoadBitmapA(nID);
+	BITMAP bmpInfo;
+	bmp.GetBitmap(&bmpInfo);
+	
+	HDC dcMemory = CreateCompatibleDC(_hDCMem);
+	HANDLE pOldBitmap = SelectObject(dcMemory, &bmp);
+	tagRECT rect;
+	GetClientRect(hwnd, &rect);
+	int nX = rect.left + (rect.right-rect.left - bmpInfo.bmWidth) / 2;
+	int nY = rect.top + (rect.bottom - rect.top - bmpInfo.bmHeight) / 2;
+
+	BitBlt(_hDCMem, 0, 0, bmpInfo.bmWidth, bmpInfo.bmHeight, dcMemory, 0, 0, SRCCOPY);
+
+	SelectObject(dcMemory, pOldBitmap);
+}
+tagRGBTRIPLE arrbitmap[800][500];
+void paintbmp() {
+	freopen("back.bmp", "r", stdin);
+	ref(i, 1, 54)getchar(); int w = 800, h = 500;
+	def(j, h - 1, 0) {
+		ref(i, 0, w - 1) {
+			BYTE b = getchar(), g = getchar(), r = getchar();
+			arrbitmap[i][j] = { b,g,r };
+		}
+		ref(i, 1, (4 - w * 3 % 4) % 4)getchar();
+	}
+	fclose(stdin);
+	beginPdot();
+	h = 400;
+	ref(i, 0, w - 1)ref(j, 0, h - 1) {
+		int r = 0, g = 0, b = 0, t = 0;
+		int p = 4 * j / h + 2;
+		ref(I, max(i - p, 0), min(i + p, w - 1))ref(J, max(j - p, 0), min(j + p, h - 1)) {
+			tagRGBTRIPLE c = arrbitmap[I][J];
+			r += c.rgbtRed; g += c.rgbtGreen; b += c.rgbtBlue; t++;
+		}
+		r /= t; g /= t; b /= t;
+		double q = 1.0*max(j - 300, 0) / 100;
+		r = (1 - q)*r + q * 200; g = (1 - q)*g + q * 200; b = (1 - q)*b + q * 200;
+		Pdot(i, j, r, g, b);
+	}
+	endPdot();
+}
 void _main() {
 	textbox t, t1, t2, t3;
 	t.init();
@@ -368,10 +415,11 @@ void _main() {
 position1:
 	flushmouse();
 	clearscreen(GRAY200);
+	paintbmp();
+
 	t1.init();
 	t1.setstyle(GRAY100, 36, 15, "Courtier New", lgcenterhorizontal | lgcentervertical);
 	t3 = t2 = t1;
-
 	t1.text = "RESUME";
 	t1.setbox(0, _winh * 8 / 12, _winw, _winh * 9 / 12);
 	t1.paint();
