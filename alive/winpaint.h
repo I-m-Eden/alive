@@ -131,7 +131,7 @@ void endPdot();											//结束绘制像素点(beginPdot后使用)
 void rgb2hsl(COLORREF C, double &h, double &s, double &l);
 														//rgb转hsl
 COLORREF hsl2rgb(double h,double s,double l);			//hsl转rgb
-void inversehsl(double&h, double&s, double&l);		//反转hsl
+void inversehsl(double&h, double&s, double&l);			//反转hsl
 COLORREF inversecolor(COLORREF c);						//反转颜色
 COLORREF inversergb(COLORREF c);						//反转rgb
 COLORREF gdot(int x, int y);							//获取像素颜色
