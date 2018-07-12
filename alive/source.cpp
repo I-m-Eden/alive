@@ -171,14 +171,62 @@ void adjust(vector2&v) {
 		v = vector2(nv*cos(a), nv*sin(a)); return;
 	}
 }
+BYTE*rcData;
+string UseCustomResource(int rcId) {
+	HRSRC hRsrc = FindResource(_hinst, MAKEINTRESOURCE(rcId), RT_BITMAP);
+	if (NULL == hRsrc) return "rcError1";
+	DWORD dwSize = SizeofResource(_hinst, hRsrc);
+	if (0 == dwSize) return "rcError2";
+	HGLOBAL hGlobal = LoadResource(_hinst, hRsrc);
+	if (NULL == hGlobal) return "rcError3"; 
+	rcData = new BYTE[dwSize];
+	ZeroMemory(rcData, sizeof(BYTE)*dwSize);
+	CopyMemory(rcData, (PBYTE)LockResource(hGlobal), dwSize);
+	return "";
+}
+tagRGBTRIPLE arrbitmap[800][600]; bool flagarr;
+
+void paintbmp(int x,int y,int X,int Y) {
+	int w = 800, h = 600;
+	if (!flagarr) {
+		string fileinfo = UseCustomResource(IDB_BITMAP1);
+		int cnt = 54;
+		def(j, h - 1, 0) {
+			ref(i, 0, w - 1) {
+				BYTE r = rcData[cnt++], b = rcData[cnt++], g = rcData[cnt++];
+				arrbitmap[i][j] = { b,g,r };
+			}
+			ref(i, 1, (4 - w * 3 % 4) % 4)cnt++;
+		}
+		delete[] rcData;
+	}
+	beginPdot();
+	ref(i, x, X)ref(j, y, Y) {
+		int r = 0, g = 0, b = 0, t = 0;
+		int p = 4 * j / h + 2;
+		ref(I, max(i - p, 0), min(i + p, w - 1))ref(J, max(j - p, 0), min(j + p, h - 1)) {
+			tagRGBTRIPLE c = arrbitmap[I][J];
+			r += c.rgbtRed; g += c.rgbtGreen; b += c.rgbtBlue; t++;
+		}
+		r /= t; g /= t; b /= t;
+		double q1 = 1.0*max(j - 300, 0) / 300;
+		double q2 = 1.0 - max(1.0*(sqrt((i - 400)*(i - 400) + (j - 540)*(j - 540)) - 150) / 510, 0);
+		q2 = q2 * q2 * q2;
+		double q = q1;
+		r = (1 - q)*r + q * 200; g = (1 - q)*g + q * 200; b = (1 - q)*b + q * 200;
+		Pdot(i, j, r, g, b);
+	}
+	endPdot();
+}
 void _restart1() {
-	flushmouse();
+	flushmouse(); textbox TB;
+	int number_wood = 0, number_stone = 0;
 	figure.setposition(_winw / 2, _winh / 2);
 	producemap();
 	realp = { 0,0 };
 	figure.angle = 0;
 	int tick = 0;
-	int fps = 50, t = 0, rest = 0; DWORD last = GetTickCount(); 
+	int fps = 50, t = 0, rest = 0; DWORD last = GetTickCount();
 	double velocity = 2.0;
 
 	initnullitpvi();
@@ -186,7 +234,7 @@ void _restart1() {
 
 	while (!_isquit) {
 		tick++;
-		
+
 		vector2 ms = vector2(getmousex(hwnd) - _winw / 2, getmousey(hwnd) - _winh / 2);
 		figure.angle = atan2(ms.y, ms.x) + pi / 2;
 
@@ -197,10 +245,10 @@ void _restart1() {
 			flushkey(); flushmouse();
 			while (GetAsyncKeyState(VK_ESCAPE) & 0x8000) peekmsg(), delay(1);
 		}
-		if (GetAsyncKeyState('W') & 0x8000)v.y-=1;
-		if (GetAsyncKeyState('S') & 0x8000)v.y+=1;
-		if (GetAsyncKeyState('A') & 0x8000)v.x-=1;
-		if (GetAsyncKeyState('D') & 0x8000)v.x+=1;
+		if (GetAsyncKeyState('W') & 0x8000)v.y -= 1;
+		if (GetAsyncKeyState('S') & 0x8000)v.y += 1;
+		if (GetAsyncKeyState('A') & 0x8000)v.x -= 1;
+		if (GetAsyncKeyState('D') & 0x8000)v.x += 1;
 		if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) break;
 		if (v.x || v.y) v = v * (velocity / norm(v));
 
@@ -222,6 +270,7 @@ void _restart1() {
 			}
 			gainobj = id;
 			if (gainpct >= 0.5) {
+				if ((*gainobj).second == IDTREE) number_wood++; else number_stone++;
 				eraseall(gainobj);
 				gainobj = null_itpvi; gainpct = 0;
 			}
@@ -232,24 +281,87 @@ void _restart1() {
 		clearscreen(GRAY200);
 		paintmap();
 		figure.paint();
-		paintmist(0.25*sin(2*pi*tick/500)+0.5);
+		paintmist(0.25*sin(2 * pi*tick / 500) + 0.5);
 
-		if (GetTickCount() >= last+1000) { last += 1000; rest = t; t = 0; }
+		if (GetTickCount() >= last + 1000) { last += 1000; rest = t; t = 0; }
 		sett(GRAY80, 30, 0, "");
-		ptext(0, 0,("fps: "+constr(rest)).c_str());
-
+		ptext(0, 0, ("fps: " + constr(rest)).c_str());
+		TB.init();
+		TB.setbox(0, 0, _winw, _winh);
+		TB.setstyle(rgb(50, 100, 0), 30, 0, "", lgright | lgtop);
+		string snw = "Number Of Wood: "; snw += constr(number_wood);
+		TB.text = snw.c_str();
+		TB.paint();
+		TB.setbox(0, TB.ty2, _winw, _winh);
+		TB.setstyle(rgb(50, 100, 0), 30, 0, "", lgright | lgtop);
+		string sns = "Number Of Stone: "; sns += constr(number_stone);
+		TB.text = sns.c_str();
+		TB.paint();
 		flushpaint();
 		peekmsg(); delay(1);
 	}
 }
+int Sr[800][600],Sg[800][600],Sb[800][600];
+void Paintbmp(int x, int y, int X, int Y) {
+	int w = 800, h = 600;
+	if (!flagarr) {
+		string fileinfo = UseCustomResource(IDB_BITMAP1);
+		int cnt = 54;
+		def(j, h - 1, 0) {
+			ref(i, 0, w - 1) {
+				BYTE r = rcData[cnt++], b = rcData[cnt++], g = rcData[cnt++];
+				arrbitmap[i][j] = { b,g,r };
+			}
+			ref(i, 1, (4 - w * 3 % 4) % 4)cnt++;
+		}
+		delete[] rcData;
+	}
+	Sr[0][0] = arrbitmap[0][0].rgbtRed;
+	Sg[0][0] = arrbitmap[0][0].rgbtGreen;
+	Sb[0][0] = arrbitmap[0][0].rgbtBlue;
+	for (int i = 1; i < 800; i++) Sr[i][0] = Sr[i - 1][0] + arrbitmap[i][0].rgbtRed;
+	for (int i = 1; i < 800; i++) Sg[i][0] = Sg[i - 1][0] + arrbitmap[i][0].rgbtGreen;
+	for (int i = 1; i < 800; i++) Sb[i][0] = Sb[i - 1][0] + arrbitmap[i][0].rgbtBlue;
+	for (int i = 1; i < 600; i++) Sr[0][i] = Sr[0][i - 1] + arrbitmap[0][i].rgbtRed;
+	for (int i = 1; i < 600; i++) Sg[0][i] = Sg[0][i - 1] + arrbitmap[0][i].rgbtGreen;
+	for (int i = 1; i < 600; i++) Sb[0][i] = Sb[0][i - 1] + arrbitmap[0][i].rgbtBlue;
+	for (int i = 1; i < 800; i++)
+		for (int j = 1; j < 600; j++)
+			Sr[i][j] = Sr[i - 1][j] + Sr[i][j - 1] - Sr[i - 1][j - 1] + arrbitmap[i][j].rgbtRed;
+	for (int i = 1; i < 800; i++)
+		for (int j = 1; j < 600; j++)
+			Sg[i][j] = Sg[i - 1][j] + Sg[i][j - 1] - Sg[i - 1][j - 1] + arrbitmap[i][j].rgbtGreen;
+	for (int i = 1; i < 800; i++)
+		for (int j = 1; j < 600; j++)
+			Sb[i][j] = Sb[i - 1][j] + Sb[i][j - 1] - Sb[i - 1][j - 1] + arrbitmap[i][j].rgbtBlue;
+	beginPdot();
+	ref(i, x, X)ref(j, y, Y) {
+		int r, g, b, t;
+		int p = 5;
+		int s1, s2, s3, s4;
+		s1 = Sr[min(i + p, w - 1)][min(j + p, h - 1)], s2 = ((j <= p) ? 0 : Sr[min(i + p, w - 1)][max(j - p, 0) - 1]);
+		s3 = ((i <= p) ? 0 : Sr[max(i - p, 0) - 1][min(j + p, h - 1)]), s4 = ((i <= p || j <= p) ? 0 : Sr[max(i - p, 0) - 1][max(j - p, 0) - 1]);
+		r = s1 - s2 - s3 + s4;
+		s1 = Sg[min(i + p, w - 1)][min(j + p, h - 1)], s2 = ((j <= p) ? 0 : Sg[min(i + p, w - 1)][max(j - p, 0) - 1]);
+		s3 = ((i <= p) ? 0 : Sg[max(i - p, 0) - 1][min(j + p, h - 1)]), s4 = ((i <= p || j <= p) ? 0 : Sg[max(i - p, 0) - 1][max(j - p, 0) - 1]);
+		g = s1 - s2 - s3 + s4;
+		s1 = Sb[min(i + p, w - 1)][min(j + p, h - 1)], s2 = ((j <= p) ? 0 : Sb[min(i + p, w - 1)][max(j - p, 0) - 1]);
+		s3 = ((i <= p) ? 0 : Sb[max(i - p, 0) - 1][min(j + p, h - 1)]), s4 = ((i <= p || j <= p) ? 0 : Sb[max(i - p, 0) - 1][max(j - p, 0) - 1]);
+		b = s1 - s2 - s3 + s4;
+		t = (min(i + p, w - 1) - max(i - p, 0) + 1)*(min(j + p, w - 1) - max(j - p, 0) + 1);
+		r /= t; g /= t; b /= t;
+		Pdot(i, j, r, g, b);
+	}
+	endPdot();
+}
 void _restart() {
 	flushmouse();
-	clearscreen(GRAY200);
+	Paintbmp(0, 0, _winw - 1, _winh - 1);
 	beginPdot();
 	double lightness = pi / 10;
 	ref(i, 0, 600)ref(j, 200, 600) {
 		COLORREF c = hsl2rgb(1.0*i / 600, 1.0*j / 600, lightness);
-		Pdot(i + 40, j -80, c);
+		Pdot(i + 40, j - 80, c);
 	}
 	endPdot();
 	textbox t, trgb;
@@ -279,13 +391,13 @@ void _restart() {
 	trgb.init();
 	trgb.setbox(t.tx2, 80, 640, 120);
 	trgb.setstyle(BLACK, 30, 0, "微软雅黑", lgtop | lgleft);
-	figureimage fg1,fg2,fg3,fg4;
+	figureimage fg1, fg2, fg3, fg4;
 	fg1.setposition((b1.x1 + b1.x2) / 2, (b1.y1 + b1.y2) / 2);
 	fg2.setposition((b2.x1 + b2.x2) / 2, (b2.y1 + b2.y2) / 2);
 	fg3.setposition((b3.x1 + b3.x2) / 2, (b3.y1 + b3.y2) / 2);
 	fg4.setposition((b4.x1 + b4.x2) / 2, (b4.y1 + b4.y2) / 2);
-	int current_p=0;
-	int cury = 70, idealy = 70; 
+	int current_p = 0;
+	int cury = 70, idealy = 70;
 	while (!_isquit) {
 		peekmsg(); delay(3);
 		b1.listen();
@@ -302,9 +414,9 @@ void _restart() {
 		}
 		if (b1.lbuttonrelease || b2.lbuttonrelease || b3.lbuttonrelease) {
 			p[current_p].visibletrans();
-			if (b1.lbuttonrelease)current_p = 0, idealy=70; else
-				if (b2.lbuttonrelease)current_p = 1, idealy=170; else
-					if (b3.lbuttonrelease)current_p = 2, idealy=270;
+			if (b1.lbuttonrelease)current_p = 0, idealy = 70; else
+				if (b2.lbuttonrelease)current_p = 1, idealy = 170; else
+					if (b3.lbuttonrelease)current_p = 2, idealy = 270;
 			p[current_p].visibletrans();
 			trgb.clear(GRAY200);
 			if (p[current_p].picked) {
@@ -326,7 +438,7 @@ void _restart() {
 			text = text + constr(GetRValue(c)) + ", " + constr(GetGValue(c)) + ", " + constr(GetBValue(c)) + ")";
 			trgb.text = text.c_str();
 			trgb.paint();
-			
+
 			if (current_p == 0) fg1.fc1 = fg4.fc1 = c; else
 				if (current_p == 1) fg2.fc2 = fg4.fc2 = c; else
 					if (current_p == 2) fg3.fc3 = fg4.fc3 = c;
@@ -345,51 +457,6 @@ void _restart() {
 		setd(0, 3, BLACK); pline(655, cury, 655, cury + 100); pline(765, cury, 765, cury + 100);
 		flushpaint();
 	}
-}
-BYTE*rcData;
-string UseCustomResource(int rcId) {
-	HRSRC hRsrc = FindResource(_hinst, MAKEINTRESOURCE(rcId), RT_BITMAP);
-	if (NULL == hRsrc) return "rcError1";
-	DWORD dwSize = SizeofResource(_hinst, hRsrc);
-	if (0 == dwSize) return "rcError2";
-	HGLOBAL hGlobal = LoadResource(_hinst, hRsrc);
-	if (NULL == hGlobal) return "rcError3"; 
-	rcData = new BYTE[dwSize];
-	ZeroMemory(rcData, sizeof(BYTE)*dwSize);
-	CopyMemory(rcData, (PBYTE)LockResource(hGlobal), dwSize);
-	return "";
-}
-tagRGBTRIPLE arrbitmap[800][500];
-
-void paintbmp() {
-	string fileinfo = UseCustomResource(IDB_BITMAP1);
-	int cnt = 54;
-	int w = 800, h = 500;
-	def(j, h - 1, 0) {
-		ref(i, 0, w - 1) {
-			BYTE r = rcData[cnt++], b = rcData[cnt++], g = rcData[cnt++];
-			arrbitmap[i][j] = { b,g,r };
-		}
-		ref(i, 1, (4 - w * 3 % 4) % 4)cnt++;
-	}
-	beginPdot();
-	h = 500;
-	ref(i, 0, w - 1)ref(j, 0, h - 1) {
-		int r = 0, g = 0, b = 0, t = 0;
-		int p = 4 * j / h + 2;
-		ref(I, max(i - p, 0), min(i + p, w - 1))ref(J, max(j - p, 0), min(j + p, h - 1)) {
-			tagRGBTRIPLE c = arrbitmap[I][J];
-			r += c.rgbtRed; g += c.rgbtGreen; b += c.rgbtBlue; t++;
-		}
-		r /= t; g /= t; b /= t;
-		double q1 = 1.0*max(j - 300, 0) / 200;
-		double q2 = 1.0 - max(1.0*(sqrt((i - 400)*(i - 400) + (j - 540)*(j - 540)) - 180) / 480, 0);
-		q2 = q2 * q2 * q2;
-		double q = max(q1, q2);
-		r = (1 - q)*r + q * 200; g = (1 - q)*g + q * 200; b = (1 - q)*b + q * 200;
-		Pdot(i, j, r, g, b);
-	}
-	endPdot();
 }
 void _main() {
 	textbox t, t1, t2, t3;
@@ -416,7 +483,7 @@ void _main() {
 position1:
 	flushmouse();
 	clearscreen(GRAY200);
-	paintbmp();
+	paintbmp(0, 0, _winw-1,_winh-1);
 
 	t1.init();
 	t1.setstyle(GRAY100, 36, 15, "Courtier New", lgcenterhorizontal | lgcentervertical);
@@ -435,32 +502,32 @@ position1:
 	while (1) {
 		t1.listen(); t2.listen(); t3.listen();
 		if (t1.ifmouseovertranstrue()) {
-			t1.clear(GRAY200);
+			paintbmp(t1.tx1,t1.ty1,t1.tx2,t1.ty2);
 			t1.textcolor = GRAY120; t1.fw = 16;
 			t1.paint(); flushpaint();
 		}
 		else if (t1.ifmouseovertransfalse()) {
-			t1.clear(GRAY200);
+			paintbmp(t1.tx1, t1.ty1, t1.tx2, t1.ty2);
 			t1.textcolor = GRAY100; t1.fw = 15;
 			t1.paint(); flushpaint();
 		}
 		if (t2.ifmouseovertranstrue()) {
-			t2.clear(GRAY200);
+			paintbmp(t2.tx1, t2.ty1, t2.tx2, t2.ty2);
 			t2.textcolor = GRAY120; t2.fw = 16;
 			t2.paint(); flushpaint();
 		}
 		else if (t2.ifmouseovertransfalse()) {
-			t2.clear(GRAY200);
+			paintbmp(t2.tx1, t2.ty1, t2.tx2, t2.ty2);
 			t2.textcolor = GRAY100; t2.fw = 15;
 			t2.paint(); flushpaint();
 		}
 		if (t3.ifmouseovertranstrue()) {
-			t3.clear(GRAY200);
+			paintbmp(t3.tx1, t3.ty1, t3.tx2, t3.ty2);
 			t3.textcolor = GRAY120; t3.fw = 16;
 			t3.paint(); flushpaint();
 		}
 		else if (t3.ifmouseovertransfalse()) {
-			t3.clear(GRAY200);
+			paintbmp(t3.tx1, t3.ty1, t3.tx2, t3.ty2);
 			t3.textcolor = GRAY100; t3.fw = 15;
 			t3.paint(); flushpaint();
 		}
