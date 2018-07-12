@@ -128,8 +128,12 @@ void Pdot(int x, int y, BYTE r, BYTE g, BYTE b);		//快速画像素点(beginPdot后使用
 void Pdot(int x, int y, COLORREF c);					//快速画像素点(beginPdot后使用)
 void flushPdot();										//更新内存DC(beginPdot后使用)
 void endPdot();											//结束绘制像素点(beginPdot后使用)
+void rgb2hsl(COLORREF C, double &h, double &s, double &l);
+														//rgb转hsl
 COLORREF hsl2rgb(double h,double s,double l);			//hsl转rgb
-COLORREF inversergb(COLORREF c);						//反转颜色
+void inversehsl(double&h, double&s, double&l);		//反转hsl
+COLORREF inversecolor(COLORREF c);						//反转颜色
+COLORREF inversergb(COLORREF c);						//反转rgb
 COLORREF gdot(int x, int y);							//获取像素颜色
 void pdot(int x, int y, COLORREF c);					//画像素点
 void setd(int pstyle, int pwidth, COLORREF pc);			//设置线条风格
@@ -370,27 +374,39 @@ void flushPdot() { SetDIBits(_hDCMem, _hBMMem, 0, _bInfo.bmiHeader.biHeight, _pD
 void endPdot() { flushPdot(); delete[]_pData; }
 COLORREF gdot(int x, int y) { return GetPixel(_hDCMem, x, y); }
 COLORREF inversergb(COLORREF c) { return 0xffffff-c; }
+void inversehsl(double&h, double&s, double&l) { h += 0.5; s += 0.5; l += 0.5; if (h >= 1)h -= 1; if (s >= 1)s -= 1; if (l >= 1)l -= 1; }
+COLORREF inversecolor(COLORREF c) {
+	double h, s, l; rgb2hsl(c, h, s, l);
+	inversehsl(h, s, l); return hsl2rgb(h, s, l);
+}
 void pdot(int x, int y, COLORREF c) { SetPixel(_hDCMem, x, y, c); }
-double Hue2RGB(double v1, double v2, double vH) {
-	if (vH < 0) vH += 1;
-	if (vH > 1) vH -= 1;
-	if (6.0 * vH < 1) return v1 + (v2 - v1) * 6.0 * vH;
-	if (2.0 * vH < 1) return v2;
-	if (3.0 * vH < 2) return v1 + (v2 - v1) * ((2.0 / 3.0) - vH) * 6.0;
-	return (v1);
+void rgb2hsl(COLORREF C, double &h, double &s, double &l) {
+	double r, g, b, m, mm, c;
+	r = 1.0*GetRValue(C) / 255.0; g = 1.0*GetGValue(C) / 255.0; b = 1.0*GetBValue(C) / 255.0;
+	m = max(max(r, g), b); mm = min(min(r, g), b); c = m - mm;
+	if (c == 0)h = 0; else
+		if (m == r)h = (g - b) / c / 6; else
+			if (m == g)h = (b - r) / c / 6 + 1.0 / 3; else
+				if (m == b)h = (r - g) / c / 6 + 2.0 / 3;
+	if (h < 0)h += 1;
+	l = (m + mm) / 2;
+	if (l == 1)s = 0; else s = c / (1 - fabs(2.0 * l - 1));
 }
 COLORREF hsl2rgb(double h, double s, double l) {
-	double R, G, B;
-	double x, y;
-	if (s == 0) { R = l * 255.0; G = l * 255.0; B = l * 255.0; }
-	else {
-		if (l < 0.5) y = l * (1 + s); else y = l + s - s * l;
-		x = l * 2 - y;
-		R = 255.0 * Hue2RGB(x, y, h + 1.0 / 3.0);
-		G = 255.0 * Hue2RGB(x, y, h);
-		B = 255.0 * Hue2RGB(x, y, h - 1.0 / 3.0);
-	}
-	return rgb(R, G, B);
+	double c, x,r,g,b;
+	c = (1.0 - fabs(l * 2 - 1))*s;
+	x = h * 6; while (x >= 2)x -= 2;
+	x = c * (1 - fabs(x - 1));
+	if (0.0 / 6 <= h && h <= 1.0 / 6)r = c, g = x, b = 0;
+	if (1.0 / 6 <= h && h <= 2.0 / 6)r = x, g = c, b = 0;
+	if (2.0 / 6 <= h && h <= 3.0 / 6)r = 0, g = c, b = x;
+	if (3.0 / 6 <= h && h <= 4.0 / 6)r = 0, g = x, b = c;
+	if (4.0 / 6 <= h && h <= 5.0 / 6)r = x, g = 0, b = c;
+	if (5.0 / 6 <= h && h <= 6.0 / 6)r = c, g = 0, b = x;
+	r = r + l - c / 2; r = r * 255.0;
+	g = g + l - c / 2; g = g * 255.0;
+	b = b + l - c / 2; b = b * 255.0;
+	return RGB((int)round(r), (int)round(g), (int)round(b));
 }
 void pline(int x1, int y1, int x2, int y2) { MoveToEx(_hDCMem, x1, y1, NULL); LineTo(_hDCMem, x2, y2); }
 void setd(int pstyle, int pwidth, COLORREF pc) {

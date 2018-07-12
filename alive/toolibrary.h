@@ -112,7 +112,7 @@ public:
 	int x, y;
 	bool mouseover_, mouseover, lbuttonpress, lbuttonrelease;
 	bool picked, pickedtrans;
-	vector<POINT> s;
+	vector<pair<POINT, COLORREF> > s;
 	void init() {
 		setstyle(3); setbox(0, 0, 0, 0);
 		x = y = 0; 
@@ -138,9 +138,9 @@ public:
 	}
 	void visibletrans() {
 		if (!picked || s.empty())return;
-		for (vector<POINT>::iterator it = s.begin(); it != s.end(); it++) {
-			int x = (*it).x, y = (*it).y;
-			pdot(x, y, inversergb(gdot(x, y)));
+		for (vector<pair<POINT, COLORREF> >::iterator it = s.begin(); it != s.end(); it++) {
+			int x = (*it).first.x, y = (*it).first.y;
+			pdot(x, y, (*it).second);
 		}
 	}
 #define setr setstyle
@@ -158,9 +158,9 @@ public:
 		lbuttonpress = !lbuttonrelease && mouseover && (lbuttonpress || islbuttondown());
 		if (mouseover&&lbuttonpress) {
 			if (!picked)picked = 1; else {
-				for (vector<POINT>::iterator it = s.begin(); it != s.end(); it++) {
-					int x = (*it).x, y = (*it).y;
-					pdot(x, y, inversergb(gdot(x, y)));
+				for (vector<pair<POINT, COLORREF> >::iterator it = s.begin(); it != s.end(); it++) {
+					int x = (*it).first.x, y = (*it).first.y;
+					pdot(x, y, (*it).second);
 				}
 				s.clear();
 			}
@@ -170,18 +170,20 @@ public:
 				int yy = (int)round(sqrt(r*r - xx * xx));
 				if (abs(xx) > abs(yy))continue;
 				if (x + xx >= x1 && x + xx <= x2) {
-					if (y + yy >= y1 && y + yy <= y2)s.push_back({ x + xx,y + yy });
-					if (y - yy >= y1 && y - yy <= y2)s.push_back({ x + xx,y - yy });
+					POINT p1 = { x + xx,y + yy }, p2 = { x + xx,y - yy };
+					if (p1.y >= y1 && p1.y <= y2)s.push_back(make_pair(p1, gdot(p1.x, p1.y)));
+					if (p2.y >= y1 && p2.y <= y2)s.push_back(make_pair(p2, gdot(p2.x, p2.y)));
 				}
 				if (abs(xx) >= abs(yy))continue;
 				if (y + xx >= y1 && y + xx <= y2) {
-					if (x + yy >= x1 && x + yy <= x2)s.push_back({ x + yy,y + xx });
-					if (x - yy >= x1 && x - yy <= x2)s.push_back({ x - yy,y + xx });
+					POINT p1 = { x + yy,y + xx }, p2 = { x - yy,y + xx };
+					if (p1.x >= x1 && p1.x <= x2)s.push_back(make_pair(p1, gdot(p1.x, p1.y)));
+					if (p2.x >= x1 && p2.x <= x2)s.push_back(make_pair(p2, gdot(p2.x, p2.y)));
 				}
 			}
-			for (vector<POINT>::iterator it = s.begin(); it != s.end(); it++) {
-				int x = (*it).x, y = (*it).y;
-				pdot(x, y, inversergb(gdot(x, y)));
+			for (vector<pair<POINT, COLORREF> >::iterator it = s.begin(); it != s.end(); it++) {
+				int x = (*it).first.x, y = (*it).first.y;
+				pdot(x, y, inversecolor(gdot(x,y)));
 			}
 		}
 		else pickedtrans = 0;

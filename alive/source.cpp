@@ -40,6 +40,10 @@ void _resume() {
 figureimage figure;
 vector2 realp;
 vector<pair<vector2, int> > mp;
+int number_wood, number_stone;
+double velocity;
+int mist, Ntree, Nstone;
+
 typedef vector<pair<vector2, int>>::iterator it_pvi;
 vector<it_pvi> mpobj, mptch;
 typedef vector<it_pvi>::iterator it_itpvi;
@@ -54,9 +58,9 @@ bool sighted(vector2 p, int name) {
 	if (name == IDSTONE) return (p.x >= -stonedemo.r&&p.x <= _winw + stonedemo.r&&p.y >= -stonedemo.r&&p.y <= _winh + stonedemo.r);
 }
 void producemap() {
-	mp.clear();
-	ref(i, 1, 1000)mp.push_back(make_pair(vector2(rand() % 12000 - 6000,rand() % 12000 - 6000), IDTREE));
-	ref(i, 1, 2000)mp.push_back(make_pair(vector2(rand() % 12000 - 6000, rand() % 12000 - 6000), IDSTONE));	
+	mp.clear(); Ntree = 1000; Nstone = 2000;
+	ref(i, 1, Ntree)mp.push_back(make_pair(vector2(rand() % 12000 - 6000,rand() % 12000 - 6000), IDTREE));
+	ref(i, 1, Nstone)mp.push_back(make_pair(vector2(rand() % 12000 - 6000, rand() % 12000 - 6000), IDSTONE));	
 }
 void paintmap() {
 	setd(0, 0, GRAY170);
@@ -93,6 +97,7 @@ void paintmap() {
 	}
 }
 void paintmist(double p) {
+	if (p > 1.0)p = 1.0;
 	beginPdot();
 	double q = 1.0 - p; p = p * 150;
 	for (int i = _pDataSize - 1; i >= 0; --i) {
@@ -172,66 +177,83 @@ void adjust(vector2&v) {
 	}
 }
 BYTE*rcData;
+tagRGBTRIPLE arrbitmap[800][600]; bool flagarr;
+int Sr[800][600],Sg[800][600],Sb[800][600];
+
 string UseCustomResource(int rcId) {
 	HRSRC hRsrc = FindResource(_hinst, MAKEINTRESOURCE(rcId), RT_BITMAP);
 	if (NULL == hRsrc) return "rcError1";
 	DWORD dwSize = SizeofResource(_hinst, hRsrc);
 	if (0 == dwSize) return "rcError2";
 	HGLOBAL hGlobal = LoadResource(_hinst, hRsrc);
-	if (NULL == hGlobal) return "rcError3"; 
+	if (NULL == hGlobal) return "rcError3";
 	rcData = new BYTE[dwSize];
 	ZeroMemory(rcData, sizeof(BYTE)*dwSize);
 	CopyMemory(rcData, (PBYTE)LockResource(hGlobal), dwSize);
 	return "";
 }
-tagRGBTRIPLE arrbitmap[800][600]; bool flagarr;
-
-void paintbmp(int x,int y,int X,int Y) {
+void initrcData() {
+	if (flagarr)return; flagarr = 1;
+	string fileinfo = UseCustomResource(IDB_BITMAP1);
 	int w = 800, h = 600;
-	if (!flagarr) {
-		string fileinfo = UseCustomResource(IDB_BITMAP1);
-		int cnt = 54;
-		def(j, h - 1, 0) {
-			ref(i, 0, w - 1) {
-				BYTE r = rcData[cnt++], b = rcData[cnt++], g = rcData[cnt++];
-				arrbitmap[i][j] = { b,g,r };
-			}
-			ref(i, 1, (4 - w * 3 % 4) % 4)cnt++;
+	int cnt = 54;
+	def(j, h - 1, 0) {
+		ref(i, 0, w - 1) {
+			BYTE r = rcData[cnt++], b = rcData[cnt++], g = rcData[cnt++];
+			arrbitmap[i][j] = { b,g,r };
 		}
-		delete[] rcData;
+		ref(i, 1, (4 - w * 3 % 4) % 4)cnt++;
 	}
-	beginPdot();
-	ref(i, x, X)ref(j, y, Y) {
-		int r = 0, g = 0, b = 0, t = 0;
-		int p = 4 * j / h + 2;
-		ref(I, max(i - p, 0), min(i + p, w - 1))ref(J, max(j - p, 0), min(j + p, h - 1)) {
-			tagRGBTRIPLE c = arrbitmap[I][J];
-			r += c.rgbtRed; g += c.rgbtGreen; b += c.rgbtBlue; t++;
-		}
-		r /= t; g /= t; b /= t;
-		double q1 = 1.0*max(j - 300, 0) / 300;
-		double q2 = 1.0 - max(1.0*(sqrt((i - 400)*(i - 400) + (j - 540)*(j - 540)) - 150) / 510, 0);
-		q2 = q2 * q2 * q2;
-		double q = q1;
-		r = (1 - q)*r + q * 200; g = (1 - q)*g + q * 200; b = (1 - q)*b + q * 200;
-		Pdot(i, j, r, g, b);
-	}
-	endPdot();
+	delete[] rcData;
+	Sr[0][0] = arrbitmap[0][0].rgbtRed;
+	Sg[0][0] = arrbitmap[0][0].rgbtGreen;
+	Sb[0][0] = arrbitmap[0][0].rgbtBlue;
+	for (int i = 1; i < 800; i++) Sr[i][0] = Sr[i - 1][0] + arrbitmap[i][0].rgbtRed;
+	for (int i = 1; i < 800; i++) Sg[i][0] = Sg[i - 1][0] + arrbitmap[i][0].rgbtGreen;
+	for (int i = 1; i < 800; i++) Sb[i][0] = Sb[i - 1][0] + arrbitmap[i][0].rgbtBlue;
+	for (int i = 1; i < 600; i++) Sr[0][i] = Sr[0][i - 1] + arrbitmap[0][i].rgbtRed;
+	for (int i = 1; i < 600; i++) Sg[0][i] = Sg[0][i - 1] + arrbitmap[0][i].rgbtGreen;
+	for (int i = 1; i < 600; i++) Sb[0][i] = Sb[0][i - 1] + arrbitmap[0][i].rgbtBlue;
+	for (int i = 1; i < 800; i++)
+		for (int j = 1; j < 600; j++)
+			Sr[i][j] = Sr[i - 1][j] + Sr[i][j - 1] - Sr[i - 1][j - 1] + arrbitmap[i][j].rgbtRed;
+	for (int i = 1; i < 800; i++)
+		for (int j = 1; j < 600; j++)
+			Sg[i][j] = Sg[i - 1][j] + Sg[i][j - 1] - Sg[i - 1][j - 1] + arrbitmap[i][j].rgbtGreen;
+	for (int i = 1; i < 800; i++)
+		for (int j = 1; j < 600; j++)
+			Sb[i][j] = Sb[i - 1][j] + Sb[i][j - 1] - Sb[i - 1][j - 1] + arrbitmap[i][j].rgbtBlue;
 }
+
 void _restart1() {
-	flushmouse(); textbox TB;
-	int number_wood = 0, number_stone = 0;
-	figure.setposition(_winw / 2, _winh / 2);
+	flushmouse(); 
+
+	textbox TBtree, TBstone, TBfps, TBmist;
+	TBfps.init();
+	TBfps.setbox(0, 0, _winw, _winh);
+	TBfps.setstyle(GRAY80, 30, 0, "", lgleft | lgtop);
+	TBfps.text = ""; TBfps.paint();
+	TBmist = TBfps;
+	TBmist.setbox(0, TBfps.ty2, _winw, _winh);
+	TBmist.text = ""; TBmist.paint();
+	TBtree.init();
+	TBtree.setbox(0, 0, _winw, _winh);
+	TBtree.setstyle(rgb(50, 100, 0), 30, 0, "", lgright | lgtop);
+	TBtree.text = ""; TBtree.paint();
+	TBstone = TBtree;
+	TBstone.setbox(0, TBtree.ty2, _winw, _winh);
+	TBstone.text = ""; TBstone.paint();
+	
 	producemap();
 	realp = { 0,0 };
+	number_wood = 0, number_stone = 0;
+	velocity = 2.0; mist = 0.0;
+	figure.setposition(_winw / 2, _winh / 2);
 	figure.angle = 0;
-	int tick = 0;
-	int fps = 50, t = 0, rest = 0; DWORD last = GetTickCount();
-	double velocity = 2.0;
-
 	initnullitpvi();
 	gainobj = null_itpvi; gainpct = 0;
 
+	int tick = 0; int t = 0, rest = 0; DWORD last = GetTickCount();
 	while (!_isquit) {
 		tick++;
 
@@ -270,7 +292,8 @@ void _restart1() {
 			}
 			gainobj = id;
 			if (gainpct >= 0.5) {
-				if ((*gainobj).second == IDTREE) number_wood++; else number_stone++;
+				if ((*gainobj).second == IDTREE) number_wood++, Ntree--, mist += 200; else
+					if ((*gainobj).second == IDSTONE) number_stone++, Nstone--, mist += 500;
 				eraseall(gainobj);
 				gainobj = null_itpvi; gainpct = 0;
 			}
@@ -281,63 +304,34 @@ void _restart1() {
 		clearscreen(GRAY200);
 		paintmap();
 		figure.paint();
-		paintmist(0.25*sin(2 * pi*tick / 500) + 0.5);
+
+		mist += 3;
+		mist -= min(Ntree*0.004, mist*0.01);
+		paintmist(1.0*mist/100000*sin(2 * pi*tick / 500) + 2.0*mist/100000);
 
 		if (GetTickCount() >= last + 1000) { last += 1000; rest = t; t = 0; }
-		sett(GRAY80, 30, 0, "");
-		ptext(0, 0, ("fps: " + constr(rest)).c_str());
-		TB.init();
-		TB.setbox(0, 0, _winw, _winh);
-		TB.setstyle(rgb(50, 100, 0), 30, 0, "", lgright | lgtop);
+		
+		string snf = "FPS: "; snf += constr(rest);
+		TBfps.text = snf.c_str(); TBfps.paint();
+		string snm = "Mist: "; snm += constr(mist);
+		TBmist.text = snm.c_str(); TBmist.paint();
 		string snw = "Number Of Wood: "; snw += constr(number_wood);
-		TB.text = snw.c_str();
-		TB.paint();
-		TB.setbox(0, TB.ty2, _winw, _winh);
-		TB.setstyle(rgb(50, 100, 0), 30, 0, "", lgright | lgtop);
+		TBtree.text = snw.c_str(); TBtree.paint();
 		string sns = "Number Of Stone: "; sns += constr(number_stone);
-		TB.text = sns.c_str();
-		TB.paint();
+		TBstone.text = sns.c_str(); TBstone.paint();
+
 		flushpaint();
 		peekmsg(); delay(1);
 	}
 }
-int Sr[800][600],Sg[800][600],Sb[800][600];
-void Paintbmp(int x, int y, int X, int Y) {
-	int w = 800, h = 600;
-	if (!flagarr) {
-		string fileinfo = UseCustomResource(IDB_BITMAP1);
-		int cnt = 54;
-		def(j, h - 1, 0) {
-			ref(i, 0, w - 1) {
-				BYTE r = rcData[cnt++], b = rcData[cnt++], g = rcData[cnt++];
-				arrbitmap[i][j] = { b,g,r };
-			}
-			ref(i, 1, (4 - w * 3 % 4) % 4)cnt++;
-		}
-		delete[] rcData;
-	}
-	Sr[0][0] = arrbitmap[0][0].rgbtRed;
-	Sg[0][0] = arrbitmap[0][0].rgbtGreen;
-	Sb[0][0] = arrbitmap[0][0].rgbtBlue;
-	for (int i = 1; i < 800; i++) Sr[i][0] = Sr[i - 1][0] + arrbitmap[i][0].rgbtRed;
-	for (int i = 1; i < 800; i++) Sg[i][0] = Sg[i - 1][0] + arrbitmap[i][0].rgbtGreen;
-	for (int i = 1; i < 800; i++) Sb[i][0] = Sb[i - 1][0] + arrbitmap[i][0].rgbtBlue;
-	for (int i = 1; i < 600; i++) Sr[0][i] = Sr[0][i - 1] + arrbitmap[0][i].rgbtRed;
-	for (int i = 1; i < 600; i++) Sg[0][i] = Sg[0][i - 1] + arrbitmap[0][i].rgbtGreen;
-	for (int i = 1; i < 600; i++) Sb[0][i] = Sb[0][i - 1] + arrbitmap[0][i].rgbtBlue;
-	for (int i = 1; i < 800; i++)
-		for (int j = 1; j < 600; j++)
-			Sr[i][j] = Sr[i - 1][j] + Sr[i][j - 1] - Sr[i - 1][j - 1] + arrbitmap[i][j].rgbtRed;
-	for (int i = 1; i < 800; i++)
-		for (int j = 1; j < 600; j++)
-			Sg[i][j] = Sg[i - 1][j] + Sg[i][j - 1] - Sg[i - 1][j - 1] + arrbitmap[i][j].rgbtGreen;
-	for (int i = 1; i < 800; i++)
-		for (int j = 1; j < 600; j++)
-			Sb[i][j] = Sb[i - 1][j] + Sb[i][j - 1] - Sb[i - 1][j - 1] + arrbitmap[i][j].rgbtBlue;
+void paintbmp(int x, int y, int X, int Y) {
+	if (!flagarr) initrcData();
 	beginPdot();
+	int w = 800, h = 600;
 	ref(i, x, X)ref(j, y, Y) {
-		int r, g, b, t;
-		int p = 5;
+		int r = 0, g = 0, b = 0, t = 0;
+		int p = 4 * j / h + 2;
+
 		int s1, s2, s3, s4;
 		s1 = Sr[min(i + p, w - 1)][min(j + p, h - 1)], s2 = ((j <= p) ? 0 : Sr[min(i + p, w - 1)][max(j - p, 0) - 1]);
 		s3 = ((i <= p) ? 0 : Sr[max(i - p, 0) - 1][min(j + p, h - 1)]), s4 = ((i <= p || j <= p) ? 0 : Sr[max(i - p, 0) - 1][max(j - p, 0) - 1]);
@@ -348,7 +342,37 @@ void Paintbmp(int x, int y, int X, int Y) {
 		s1 = Sb[min(i + p, w - 1)][min(j + p, h - 1)], s2 = ((j <= p) ? 0 : Sb[min(i + p, w - 1)][max(j - p, 0) - 1]);
 		s3 = ((i <= p) ? 0 : Sb[max(i - p, 0) - 1][min(j + p, h - 1)]), s4 = ((i <= p || j <= p) ? 0 : Sb[max(i - p, 0) - 1][max(j - p, 0) - 1]);
 		b = s1 - s2 - s3 + s4;
-		t = (min(i + p, w - 1) - max(i - p, 0) + 1)*(min(j + p, w - 1) - max(j - p, 0) + 1);
+
+		t = (min(i + p, w - 1) - max(i - p, 0) + 1)*(min(j + p, h - 1) - max(j - p, 0) + 1);
+
+		r /= t; g /= t; b /= t;
+		double q1 = 1.0*max(j - 300, 0) / 300;
+		double q2 = 1.0 - max(1.0*(sqrt((i - 400)*(i - 400) + (j - 540)*(j - 540)) - 150) / 510, 0);
+		q2 = q2 * q2 * q2;
+		double q = q1;
+		r = (1 - q)*r + q * 200; g = (1 - q)*g + q * 200; b = (1 - q)*b + q * 200;
+		Pdot(i, j, r, g, b);
+	}
+	endPdot();
+}
+void Paintbmp(int x, int y, int X, int Y) {
+	int w = 800, h = 600;
+	if (!flagarr) initrcData();
+	beginPdot();
+	ref(i, x, X)ref(j, y, Y) {
+		int r, g, b, t;
+		int p = 10;
+		int s1, s2, s3, s4;
+		s1 = Sr[min(i + p, w - 1)][min(j + p, h - 1)], s2 = ((j <= p) ? 0 : Sr[min(i + p, w - 1)][max(j - p, 0) - 1]);
+		s3 = ((i <= p) ? 0 : Sr[max(i - p, 0) - 1][min(j + p, h - 1)]), s4 = ((i <= p || j <= p) ? 0 : Sr[max(i - p, 0) - 1][max(j - p, 0) - 1]);
+		r = s1 - s2 - s3 + s4;
+		s1 = Sg[min(i + p, w - 1)][min(j + p, h - 1)], s2 = ((j <= p) ? 0 : Sg[min(i + p, w - 1)][max(j - p, 0) - 1]);
+		s3 = ((i <= p) ? 0 : Sg[max(i - p, 0) - 1][min(j + p, h - 1)]), s4 = ((i <= p || j <= p) ? 0 : Sg[max(i - p, 0) - 1][max(j - p, 0) - 1]);
+		g = s1 - s2 - s3 + s4;
+		s1 = Sb[min(i + p, w - 1)][min(j + p, h - 1)], s2 = ((j <= p) ? 0 : Sb[min(i + p, w - 1)][max(j - p, 0) - 1]);
+		s3 = ((i <= p) ? 0 : Sb[max(i - p, 0) - 1][min(j + p, h - 1)]), s4 = ((i <= p || j <= p) ? 0 : Sb[max(i - p, 0) - 1][max(j - p, 0) - 1]);
+		b = s1 - s2 - s3 + s4;
+		t = (min(i + p, w - 1) - max(i - p, 0) + 1)*(min(j + p, h - 1) - max(j - p, 0) + 1);
 		r /= t; g /= t; b /= t;
 		Pdot(i, j, r, g, b);
 	}
@@ -364,12 +388,6 @@ void _restart() {
 		Pdot(i + 40, j - 80, c);
 	}
 	endPdot();
-	textbox t, trgb;
-	t.init();
-	t.text = "Choose a color for your character : ";
-	t.setbox(40, 80, 640, 120);
-	t.setstyle(BLACK, 30, 0, "微软雅黑", lgtop | lgleft);
-	t.paint();
 
 	button b1, b2, b3, b4, bnext;
 	b1.init();
@@ -380,24 +398,35 @@ void _restart() {
 	b2.setbox(660, 170, 760, 270);
 	b3.setbox(660, 270, 760, 370);
 	b4.setbox(660, 370, 760, 470);
-	bnext.setbox(660, 480, 760, 530);
+	bnext.setbox(660, 470, 760, 520);
 	bnext.text = "CONFIRM";
+	
 	picker p[3];
 	p[0].init();
 	p[0].setbox(40, 120, 640, 520);
 	p[0].setstyle(5);
 	p[1] = p[2] = p[0];
 	flushpaint();
+
+	textbox t, trgb;
+	t.init();
+	t.text = "Choose a color for your character : ";
+	t.setbox(p[0].x1, 70, p[0].x2, 120);
+	t.setstyle(BLACK, 30, 0, "微软雅黑", lgtop | lgleft);
+	t.paint();
 	trgb.init();
-	trgb.setbox(t.tx2, 80, 640, 120);
-	trgb.setstyle(BLACK, 30, 0, "微软雅黑", lgtop | lgleft);
+	trgb.setbox(p[0].x1, t.ty1, p[0].x2, t.ty2);
+	trgb.setstyle(BLACK, 30, 0, "微软雅黑", lgtop | lgright);
+	
 	figureimage fg1, fg2, fg3, fg4;
 	fg1.setposition((b1.x1 + b1.x2) / 2, (b1.y1 + b1.y2) / 2);
 	fg2.setposition((b2.x1 + b2.x2) / 2, (b2.y1 + b2.y2) / 2);
 	fg3.setposition((b3.x1 + b3.x2) / 2, (b3.y1 + b3.y2) / 2);
 	fg4.setposition((b4.x1 + b4.x2) / 2, (b4.y1 + b4.y2) / 2);
+
 	int current_p = 0;
 	int cury = 70, idealy = 70;
+	
 	while (!_isquit) {
 		peekmsg(); delay(3);
 		b1.listen();
@@ -418,7 +447,7 @@ void _restart() {
 				if (b2.lbuttonrelease)current_p = 1, idealy = 170; else
 					if (b3.lbuttonrelease)current_p = 2, idealy = 270;
 			p[current_p].visibletrans();
-			trgb.clear(GRAY200);
+			Paintbmp(trgb.tx1, trgb.ty1, trgb.tx2, trgb.ty2);
 			if (p[current_p].picked) {
 				COLORREF c = hsl2rgb(1.0*(p[current_p].x - 40) / 600, 1.0*(p[current_p].y + 80) / 600, lightness);
 				trgb.textcolor = c;
@@ -432,7 +461,7 @@ void _restart() {
 		if (p[current_p].pickedtrans) {
 
 			COLORREF c = hsl2rgb(1.0*(p[current_p].x - 40) / 600, 1.0*(p[current_p].y + 80) / 600, lightness);
-			trgb.clear(GRAY200);
+			Paintbmp(trgb.tx1, trgb.ty1, trgb.tx2, trgb.ty2);
 			trgb.textcolor = c;
 			string text = "RGB( ";
 			text = text + constr(GetRValue(c)) + ", " + constr(GetGValue(c)) + ", " + constr(GetBValue(c)) + ")";
@@ -452,7 +481,8 @@ void _restart() {
 		fg2.paint();
 		fg3.paint();
 		fg4.paint();
-		setd(0, 3, GRAY200); pline(655, cury, 655, cury + 100); pline(765, cury, 765, cury + 100);
+		Paintbmp(655 - 3 / 2, cury - 3 / 2, 655 + 3 / 2, cury + 100 + 3 / 2);
+		Paintbmp(765 - 3 / 2, cury - 3 / 2, 765 + 3 / 2, cury + 100 + 3 / 2);
 		if (cury < idealy)cury += 3; if (cury > idealy)cury -= 3;
 		setd(0, 3, BLACK); pline(655, cury, 655, cury + 100); pline(765, cury, 765, cury + 100);
 		flushpaint();
