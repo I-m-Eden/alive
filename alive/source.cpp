@@ -428,7 +428,7 @@ void _restart() {
 	int cury = 70, idealy = 70;
 	
 	while (!_isquit) {
-		peekmsg(); delay(3);
+		peekmsg(); delay(1);
 		b1.listen();
 		b2.listen();
 		b3.listen();
@@ -483,7 +483,7 @@ void _restart() {
 		fg4.paint();
 		Paintbmp(655 - 3 / 2, cury - 3 / 2, 655 + 3 / 2, cury + 100 + 3 / 2);
 		Paintbmp(765 - 3 / 2, cury - 3 / 2, 765 + 3 / 2, cury + 100 + 3 / 2);
-		if (cury < idealy)cury += 3; if (cury > idealy)cury -= 3;
+		if (cury < idealy)cury += 10; if (cury > idealy)cury -= 10;
 		setd(0, 3, BLACK); pline(655, cury, 655, cury + 100); pline(765, cury, 765, cury + 100);
 		flushpaint();
 	}
