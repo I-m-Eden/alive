@@ -19,7 +19,7 @@ private:
 			if (dd <= d)pdot(X, Y, fc);
 		}
 	}
-	int px, py;
+	double px, py;
 	int x1, y1; 
 	int x21, y21, x22, y22, d2; 
 	int x31, y31, x32, y32, d3;
@@ -34,7 +34,7 @@ public:
 		angle = 0;
 		px = 0; py = 0;
 	}
-	void setposition(int x, int y) { px = x; py = y; }
+	void setposition(double x, double y) { px = x; py = y; }
 	void paint() {
 		double ca = cos(angle), sa = sin(angle);
 		int X1 = (int)round(ca*x1 - sa * y1), Y1 = (int)round(sa*x1 + ca * y1);
@@ -54,7 +54,7 @@ public:
 class treeimage {
 private:
 	int ps, pw;COLORREF pc;
-	int x, y;
+	double x, y;
 public:
 	COLORREF fc;
 	int r;
@@ -64,7 +64,7 @@ public:
 		r = 50;
 		x = y = 0;
 	}
-	void setposition(int X, int Y) {
+	void setposition(double X, double Y) {
 		x = X; y = Y;
 	}
 	void paint() {
@@ -76,7 +76,7 @@ public:
 class stoneimage {
 private:
 	int ps, pw; COLORREF pc;
-	int x, y;
+	double x, y;
 public:
 	COLORREF fc;
 	int r;
@@ -86,7 +86,7 @@ public:
 		r = 30;
 		x = y = 0;
 	}
-	void setposition(int X, int Y) {
+	void setposition(double X, double Y) {
 		x = X; y = Y;
 	}
 	void paint() {
@@ -100,7 +100,7 @@ private:
 	POINT S[50];
 	int ps1, pw1; COLORREF pc1;
 	int ps2, pw2; COLORREF pc2;
-	int x, y;
+	double x, y;
 	double sz;
 	int Sn = 50; POINT s[50] = {
 	{ 0,65 },
@@ -157,9 +157,9 @@ public:
 	double rw, rh;
 	enemyimage() {
 		rw = 42.0; rh = 65.0;
-		ps1 = 0; pw1 = 0; pc1 = BLACK;
-		fc1 = 0xBFC7BF;
-		ps2 = 0; pw2 = 0; pc2 = BLACK;
+		ps1 = 0; pw1 = 0; pc1 = 0x788870;
+		fc1 = 0xA0B0A0;
+		ps2 = 0; pw2 = 0; pc2 = 0xB2EB79;
 		fc2 = 0x8FCF4F;
 		angle = 0; setsize(0.5);
 		x = y = 0;
@@ -169,26 +169,23 @@ public:
 	void setsize(double Sz) {
 		sz = Sz; rw = rw * sz; rh = rh * sz;
 	}
-	void setposition(int X, int Y) {
+	void setposition(double X, double Y) {
 		x = X; y = Y;
 	}
 	void paint() {
 		double ca = cos(angle), sa = sin(angle);
 		for (int i = 0; i < Sn; ++i)S[i] = s[i];
-		for (int i = 0; i < Sn; ++i)S[i] = { (int)round(sz*(S[i].x*ca - S[i].y*sa)),(int)round(sz*(S[i].x*sa + S[i].y*ca)) };
-		for (int i = 0; i < Sn; ++i)S[i].x += x, S[i].y += y;
+		for (int i = 0; i < Sn; ++i)S[i] = { (int)round(sz*(S[i].x*ca - S[i].y*sa) + x),(int)round(sz*(S[i].x*sa + S[i].y*ca) + y) };
 		setd(ps1, pw1, pc1);
 		setf(fc1);
 		ppolygon(S, Sn);
 		for (int i = 0; i < Tn; ++i)S[i] = t[i];
-		for (int i = 0; i < Tn; ++i)S[i] = { (int)round(sz*(S[i].x*ca - S[i].y*sa)),(int)round(sz*(S[i].x*sa + S[i].y*ca)) };
-		for (int i = 0; i < Tn; ++i)S[i].x += x, S[i].y += y;
+		for (int i = 0; i < Tn; ++i)S[i] = { (int)round(sz*(S[i].x*ca - S[i].y*sa) + x),(int)round(sz*(S[i].x*sa + S[i].y*ca) + y) };
 		setd(ps1, pw1, pc1);
 		setf(fc2);
 		ppolygon(S, Tn);
 		for (int i = 0; i < Tn; ++i)S[i] = t[i], S[i].x = -S[i].x;
-		for (int i = 0; i < Tn; ++i)S[i] = { (int)round(sz*(S[i].x*ca - S[i].y*sa)),(int)round(sz*(S[i].x*sa + S[i].y*ca)) };
-		for (int i = 0; i < Tn; ++i)S[i].x += x, S[i].y += y;
+		for (int i = 0; i < Tn; ++i)S[i] = { (int)round(sz*(S[i].x*ca - S[i].y*sa) + x),(int)round(sz*(S[i].x*sa + S[i].y*ca) + y) };
 		setd(ps1, pw1, pc1);
 		setf(fc2);
 		ppolygon(S, Tn);

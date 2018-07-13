@@ -144,7 +144,7 @@ void updateenemy() {
 		if (norm(p) <= 1000) {
 			double sb = atan2(-p.y, -p.x), sd = sb - sa;
 			while (sd < 0)sd += 2 * pi; while (sd > 2 * pi)sd -= 2 * pi;
-			if (rand() % 3 > 0) { if (sd < pi)sa += 0.01; else sa -= 0.01; }
+			if (rand() % 4 > 0 && sd > 0.04&&sd < 2 * pi - 0.04) { if (sd < pi)sa += 0.01; else sa -= 0.01; }
 			while (sa < 0)sa += 2 * pi; while (sa > 2 * pi)sa -= 2 * pi;
 		}
 		else {
