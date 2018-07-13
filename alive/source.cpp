@@ -37,18 +37,25 @@ void flushkey() { FlushConsoleInputBuffer(GetStdHandle(STD_INPUT_HANDLE)); }
 void _resume() {
 }
 
+int mx1, my1, mx2, my2;
 figureimage figure;
 vector2 realp;
 vector<pair<vector2, int> > mp;
+vector<pair<vector2, double> >mpenemy;
 int number_wood, number_stone;
-double velocity;
-int mist, Ntree, Nstone;
+double velocity,velocityenemy;
+int mist, Ntree, Nstone, Nenemy;
 
 typedef vector<pair<vector2, int>>::iterator it_pvi;
 vector<it_pvi> mpobj, mptch;
 typedef vector<it_pvi>::iterator it_itpvi;
 it_pvi gainobj; double gainpct;
 vector<pair<vector2, int> > nullpvi; it_pvi null_itpvi;
+
+typedef vector<pair<vector2, double>>::iterator it_pvd;
+vector<it_pvd> mpeobj, mpetch;
+typedef vector<it_pvd>::iterator it_itpvd;
+
 void initnullitpvi() {
 	nullpvi.clear(); nullpvi.push_back(make_pair(vector2(), -1)); 
 	null_itpvi = nullpvi.begin();
@@ -56,11 +63,13 @@ void initnullitpvi() {
 bool sighted(vector2 p, int name) {
 	if (name == IDTREE) return (p.x >= -treedemo.r&&p.x <= _winw + treedemo.r&&p.y >= -treedemo.r&&p.y <= _winh + treedemo.r);
 	if (name == IDSTONE) return (p.x >= -stonedemo.r&&p.x <= _winw + stonedemo.r&&p.y >= -stonedemo.r&&p.y <= _winh + stonedemo.r);
+	if (name == IDENEMY) return (p.x >= -enemydemo.rw&&p.x <= _winw + enemydemo.rw&&p.y >= -enemydemo.rh&&p.y <= _winh + enemydemo.rh);
 }
 void producemap() {
-	mp.clear(); Ntree = 1000; Nstone = 2000;
-	ref(i, 1, Ntree)mp.push_back(make_pair(vector2(rand() % 12000 - 6000,rand() % 12000 - 6000), IDTREE));
-	ref(i, 1, Nstone)mp.push_back(make_pair(vector2(rand() % 12000 - 6000, rand() % 12000 - 6000), IDSTONE));	
+	mp.clear(); Ntree = 1000; Nstone = 2000; Nenemy = 200;
+	ref(i, 1, Ntree)mp.push_back(make_pair(vector2(rand() % (mx2 - mx1) + mx1, rand() % (my2 - my1) + my1), IDTREE));
+	ref(i, 1, Nstone)mp.push_back(make_pair(vector2(rand() % (mx2 - mx1) + mx1, rand() % (my2 - my1) + my1), IDSTONE));
+	ref(i, 1, Nenemy)mpenemy.push_back(make_pair(vector2(rand() % (mx2 - mx1) + mx1, rand() % (my2 - my1) + my1), 1.0*(rand()%628)/100));
 }
 void paintmap() {
 	setd(0, 0, GRAY170);
@@ -95,6 +104,12 @@ void paintmap() {
 			else treedemo.paint();
 		}
 	}
+	for (it_itpvd i = mpeobj.begin(); i != mpeobj.end(); i++) {
+		pair<vector2, double> obj = (**i); vector2 p = obj.first - realp + vector2(_winw / 2, _winh / 2);
+		enemydemo.setposition(p.x, p.y);
+		enemydemo.angle = obj.second;
+		enemydemo.paint();
+	}
 }
 void paintmist(double p) {
 	if (p > 1.0)p = 1.0;
@@ -122,6 +137,25 @@ void paintgaining(it_pvi obj, double pct) {
 	}
 }
 */
+void updateenemy() {
+	for (it_pvd i = mpenemy.begin(); i != mpenemy.end(); i++) {
+		pair<vector2, double>obj = (*i); vector2 p = obj.first - realp; int name = IDENEMY; double sa = obj.second - pi / 2;
+		p = p + vector2(cos(sa), sin(sa))*velocityenemy;
+		if (norm(p) <= 1000) {
+			double sb = atan2(-p.y, -p.x), sd = sb - sa;
+			while (sd < 0)sd += 2 * pi; while (sd > 2 * pi)sd -= 2 * pi;
+			if (rand() % 3 > 0) { if (sd < pi)sa += 0.01; else sa -= 0.01; }
+			while (sa < 0)sa += 2 * pi; while (sa > 2 * pi)sa -= 2 * pi;
+		}
+		else {
+			if (rand() % 4 == 0)sa += 0.04; else if (rand() % 3 == 0)sa -= 0.04;
+			while (sa < 0)sa += 2 * pi; while (sa > 2 * pi)sa -= 2 * pi;
+		}
+		if (p.x < mx1)p.x = mx1; if (p.x > mx2)p.x = mx2;
+		if (p.y < my1)p.y = my1; if (p.y > my2)p.y = my2;
+		(*i) = make_pair(p + realp, sa + pi / 2);
+	}
+}
 void getsighted() {
 	mpobj.clear();
 	for (it_pvi i = mp.begin(); i != mp.end(); i++) {
@@ -130,19 +164,41 @@ void getsighted() {
 		mpobj.push_back(i);
 	}
 }
+void getsightedenemy() {
+	mpeobj.clear();
+	for (it_pvd i = mpenemy.begin(); i != mpenemy.end(); i++) {
+		pair<vector2, double>obj = (*i); vector2 p = obj.first - realp + vector2(_winw / 2, _winh / 2); int name = IDENEMY;
+		if (!sighted(p, name))continue;
+		mpeobj.push_back(i);
+	}
+}
 void gettouch() {
 	mptch.clear();
 	for (it_itpvi i = mpobj.begin(); i != mpobj.end(); i++) {
 		pair<vector2, int> obj = (**i); vector2 p = obj.first - realp; int name = obj.second;
 		double normp = norm(p);
-		if (name == IDSTONE && norm(p) >= stonedemo.r + figuredemo.r1 - 1)continue;
-		if (name == IDTREE && norm(p) >= treedemo.r + figuredemo.r1 - 1)continue;
+		if (name == IDSTONE && normp >= stonedemo.r + figuredemo.r1 - 1)continue;
+		if (name == IDTREE && normp >= treedemo.r + figuredemo.r1 - 1)continue;
 		mptch.push_back(*i);
+	}
+}
+void gettouchenemy() {
+	mpetch.clear();
+	for (it_itpvd i = mpeobj.begin(); i != mpeobj.end(); i++) {
+		pair<vector2, double> obj = (**i); vector2 p = obj.first - realp; int name = obj.second;
+		double normp = norm(p);
+		if (normp >= min(enemydemo.rw, enemydemo.rh) + figuredemo.r1 - 1)continue;
+		mpetch.push_back(*i);
 	}
 }
 void eraseall(it_pvi it) {
 	mp.erase(it);
 	getsighted(); gettouch();
+}
+void eraseallenemy() {
+	for (it_itpvd i = mpetch.begin(); i != mpetch.end(); i++)
+		mpenemy.erase(*i);
+	getsightedenemy(); gettouchenemy();
 }
 void adjust(vector2&v) {
 	double a0 = 1e9, a1 = 1e9;
@@ -244,10 +300,11 @@ void _restart1() {
 	TBstone.setbox(0, TBtree.ty2, _winw, _winh);
 	TBstone.text = ""; TBstone.paint();
 	
+	mx1 = -6000; my1 = -6000; mx2 = 6000; my2 = 6000;
 	producemap();
 	realp = { 0,0 };
 	number_wood = 0, number_stone = 0;
-	velocity = 2.0; mist = 0.0;
+	velocity = 2.0; mist = 0.0; velocityenemy = 1.2;
 	figure.setposition(_winw / 2, _winh / 2);
 	figure.angle = 0;
 	initnullitpvi();
@@ -260,13 +317,15 @@ void _restart1() {
 		vector2 ms = vector2(getmousex(hwnd) - _winw / 2, getmousey(hwnd) - _winh / 2);
 		figure.angle = atan2(ms.y, ms.x) + pi / 2;
 
-		vector2 v;
 		if (!iswndactive()) {
 			while (!iswndactive()) peekmsg(), delay(1);
 			last = GetTickCount();
 			flushkey(); flushmouse();
 			while (GetAsyncKeyState(VK_ESCAPE) & 0x8000) peekmsg(), delay(1);
 		}
+
+		updateenemy();
+		vector2 v;
 		if (GetAsyncKeyState('W') & 0x8000)v.y -= 1;
 		if (GetAsyncKeyState('S') & 0x8000)v.y += 1;
 		if (GetAsyncKeyState('A') & 0x8000)v.x -= 1;
@@ -274,10 +333,11 @@ void _restart1() {
 		if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) break;
 		if (v.x || v.y) v = v * (velocity / norm(v));
 
-		getsighted();
-		gettouch();
+		getsighted(); getsightedenemy();
+		gettouch(); gettouchenemy();
 		ref(times, 0, 1)adjust(v);
 		realp = realp + v;
+		eraseallenemy();
 
 		if (GetAsyncKeyState('Q') & 0x8000) {
 			it_pvi id = null_itpvi;

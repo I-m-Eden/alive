@@ -6,6 +6,7 @@
 using namespace std;
 const int IDTREE = 1;
 const int IDSTONE = 2;
+const int IDENEMY = 3;
 class figureimage {
 private:
 	void drawellipse(COLORREF fc, double x1, double y1, double x2, double y2, int d) {
@@ -18,17 +19,20 @@ private:
 			if (dd <= d)pdot(X, Y, fc);
 		}
 	}
-public:
 	int px, py;
-	int x1, y1, r1; COLORREF fc1;
-	int x21, y21, x22, y22, d2; COLORREF fc2;
-	int x31, y31, x32, y32, d3; COLORREF fc3;
+	int x1, y1; 
+	int x21, y21, x22, y22, d2; 
+	int x31, y31, x32, y32, d3;
+public:
+	COLORREF fc1,fc2,fc3;
+	int r1;
 	double angle;
 	figureimage() { 
 		x1 = y1 = 0; r1 = 40; fc1 = RGB(10, 10, 10);
 		x21 = -20; y21 = 2; x22 = -15; y22 = -13; d2 = 22; fc2 = RGB(20, 20, 20);
 		x31 = -7; y31 = -39; x32 = 7; y32 = -37; d3 = 17; fc3 = RGB(20, 20, 20);
 		angle = 0;
+		px = 0; py = 0;
 	}
 	void setposition(int x, int y) { px = x; py = y; }
 	void paint() {
@@ -48,15 +52,17 @@ public:
 	}
 }figuredemo;
 class treeimage {
-public:
-	int ps, pw, pc;
-	int fc;
-	int r;
+private:
+	int ps, pw;COLORREF pc;
 	int x, y;
+public:
+	COLORREF fc;
+	int r;
 	treeimage() {
 		ps = 0; pw = 0; pc = BLACK;
 		fc = 0x85DA2F;
 		r = 50;
+		x = y = 0;
 	}
 	void setposition(int X, int Y) {
 		x = X; y = Y;
@@ -68,15 +74,17 @@ public:
 	}
 }treedemo;
 class stoneimage {
-public:
-	int ps, pw, pc;
-	int fc;
-	int r;
+private:
+	int ps, pw; COLORREF pc;
 	int x, y;
+public:
+	COLORREF fc;
+	int r;
 	stoneimage() {
 		ps = 0; pw = 0; pc = BLACK;
 		fc = 0xA9A9AC;
 		r = 30;
+		x = y = 0;
 	}
 	void setposition(int X, int Y) {
 		x = X; y = Y;
@@ -87,3 +95,102 @@ public:
 		pcircle(x, y, r);
 	}
 }stonedemo;
+class enemyimage {
+private:
+	POINT S[50];
+	int ps1, pw1; COLORREF pc1;
+	int ps2, pw2; COLORREF pc2;
+	int x, y;
+	double sz;
+	int Sn = 50; POINT s[50] = {
+	{ 0,65 },
+	{ -11,64 },
+	{ -17,62 },
+	{ -22,60 },
+	{ -25,58 },
+	{ -32,51 },
+	{ -35,47 },
+	{ -38,42 },
+	{ -40,37 },
+	{ -42,30 },
+	{ -43,27 },
+	{ -44,22 },
+	{ -45,17 },
+	{ -46,11 },
+	{ -46,1 },
+	{ -45,-5 },
+	{ -44,-11 },
+	{ -43,-16 },
+	{ -42,-20 },
+	{ -38,-28 },
+	{ -32,-38 },
+	{ -22,-52 },
+	{ -13,-61 },
+	{ -8,-63 },
+	{ -5,-64 },
+	{ 0,-65 }
+	};
+	int Tn = 19; POINT t[19] = {
+	{ -40,-3 },
+	{ -40,-10 },
+	{ -38,-18 },
+	{ -36,-22 },
+	{ -34,-25 },
+	{ -31,-29 },
+	{ -25,-34 },
+	{ -21,-36 },
+	{ -16,-38 },
+	{ -13,-39 },
+	{ -4,-39 },
+	{ -5,-34 },
+	{ -8,-25 },
+	{ -11,-19 },
+	{ -21,-9 },
+	{ -24,-8 },
+	{ -27,-6 },
+	{ -29,-5 },
+	{ -33,-4 }
+	};
+public:
+	COLORREF fc1, fc2;
+	double angle;
+	double rw, rh;
+	enemyimage() {
+		rw = 42.0; rh = 65.0;
+		ps1 = 0; pw1 = 0; pc1 = BLACK;
+		fc1 = 0xBFC7BF;
+		ps2 = 0; pw2 = 0; pc2 = BLACK;
+		fc2 = 0x8FCF4F;
+		angle = 0; setsize(0.5);
+		x = y = 0;
+		for (int i = Sn/2+1; i < Sn; ++i)
+			s[i] = s[Sn - i], s[i].x = -s[i].x;
+	}
+	void setsize(double Sz) {
+		sz = Sz; rw = rw * sz; rh = rh * sz;
+	}
+	void setposition(int X, int Y) {
+		x = X; y = Y;
+	}
+	void paint() {
+		double ca = cos(angle), sa = sin(angle);
+		for (int i = 0; i < Sn; ++i)S[i] = s[i];
+		for (int i = 0; i < Sn; ++i)S[i] = { (int)round(sz*(S[i].x*ca - S[i].y*sa)),(int)round(sz*(S[i].x*sa + S[i].y*ca)) };
+		for (int i = 0; i < Sn; ++i)S[i].x += x, S[i].y += y;
+		setd(ps1, pw1, pc1);
+		setf(fc1);
+		ppolygon(S, Sn);
+		for (int i = 0; i < Tn; ++i)S[i] = t[i];
+		for (int i = 0; i < Tn; ++i)S[i] = { (int)round(sz*(S[i].x*ca - S[i].y*sa)),(int)round(sz*(S[i].x*sa + S[i].y*ca)) };
+		for (int i = 0; i < Tn; ++i)S[i].x += x, S[i].y += y;
+		setd(ps1, pw1, pc1);
+		setf(fc2);
+		ppolygon(S, Tn);
+		for (int i = 0; i < Tn; ++i)S[i] = t[i], S[i].x = -S[i].x;
+		for (int i = 0; i < Tn; ++i)S[i] = { (int)round(sz*(S[i].x*ca - S[i].y*sa)),(int)round(sz*(S[i].x*sa + S[i].y*ca)) };
+		for (int i = 0; i < Tn; ++i)S[i].x += x, S[i].y += y;
+		setd(ps1, pw1, pc1);
+		setf(fc2);
+		ppolygon(S, Tn);
+	}
+}enemydemo;
