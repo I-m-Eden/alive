@@ -59,7 +59,6 @@ vector<it_pvd> mpeobj, mpetch;
 typedef vector<it_pvd>::iterator it_itpvd;
 
 typedef vector<pair<vector2, vector2>>::iterator it_pvv;
-vector<it_pvv> mpdap;
 typedef vector<it_pvv>::iterator it_itpvv;
 
 void initnullitpvi() {
@@ -78,6 +77,17 @@ void producemap() {
 	ref(i, 1, Nstone)mp.push_back(make_pair(vector2(rand() % (mx2 - mx1) + mx1, rand() % (my2 - my1) + my1), IDSTONE));
 	ref(i, 1, Nenemy)mpenemy.push_back(make_pair(vector2(rand() % (mx2 - mx1) + mx1, rand() % (my2 - my1) + my1), 1.0*(rand()%628)/100));
 }
+vector2 randomposition(int name) {
+	while (1) {
+		vector2 p = vector2(rand() % (mx2 - mx1) + mx1, rand() % (my2 - my1) + my1);
+		if (!sighted(p - realp, name))return p;
+	}
+}
+void produceobj(int name) {
+	vector2 p = randomposition(name);
+	if (name == IDTREE || name == IDSTONE)mp.push_back(make_pair(p, name));
+	if (name == IDENEMY)mpenemy.push_back(make_pair(p, 1.0*(rand()%628)/100));
+}
 void paintgaining(it_pvi obj, double pct) {
 	if (*obj == *null_itpvi || pct <= 0)return;
 	pct = pct * pi * 2;
@@ -85,7 +95,7 @@ void paintgaining(it_pvi obj, double pct) {
 	if (name == IDTREE) {
 		setf(0x68B11F);
 		fpie(p.x - treedemo.r, p.y - treedemo.r, p.x + treedemo.r, p.y + treedemo.r,
-			p.x + 1, p.y, p.x + cos(pct) * 100, p.y - sin(pct) * 100);
+p.x + 1, p.y, p.x + cos(pct) * 100, p.y - sin(pct) * 100);
 	}
 	if (name == IDSTONE) {
 		setf(0x727272);
@@ -110,7 +120,8 @@ void paintmap() {
 				stonedemo.paint();
 				stonedemo.fc = c;
 				paintgaining(gainobj, gainpct);
-			}else stonedemo.paint();
+			}
+			else stonedemo.paint();
 		}
 	}
 	for (it_itpvi i = mpobj.begin(); i != mpobj.end(); i++) {
@@ -151,17 +162,14 @@ void paintmist(double p) {
 	endPdot();
 }
 void updatebullet() {
-	mpdap.clear();
-	for (it_pvv i = mpbullet.begin(); i != mpbullet.end(); i++) {
-		vector2 a = (*i).first, b = (*i).second;
+	for(int i = 0; i<mpbullet.size(); i++){
+		it_pvv it = mpbullet.begin() + i;
+		vector2 a = (*it).first, b = (*it).second;
 		vector2 A = a + b * (1.0 / norm(b))*velocitybullet;
 		vector2 B = b - b * (1.0 / norm(b))*velocitybullet;
-		(*i) = make_pair(A, B);
-		if ((b*B) < 1e-9)mpdap.push_back(i);
+		(*it) = make_pair(A, B);
+		if ((b*B) < 1e-9)mpbullet.erase(it), i--;
 	}
-	for (it_itpvv i = mpdap.begin(); i != mpdap.end(); i++)
-		mpbullet.erase(*i);
-	mpdap.clear();
 }
 void updateenemy() {
 	for (it_pvd i = mpenemy.begin(); i != mpenemy.end(); i++) {
@@ -183,8 +191,14 @@ void updateenemy() {
 	}
 }
 void updatekilled() {
-	//枚举bullet，枚举enemy
-	//把接触者erase掉
+	for (int i = 0; i < mpbullet.size(); i++)
+		for (int j = 0; j < mpenemy.size(); j++) {
+			it_pvv it = mpbullet.begin() + i;
+			it_pvd jt = mpenemy.begin() + j;
+			if (norm((*it).first - (*jt).first) <= min(enemydemo.rh, enemydemo.rw) + bulletdemo.r) {
+				mpbullet.erase(it); mpenemy.erase(jt); Nenemy--; i--; break;
+			}
+		}
 }
 void getsighted() {
 	mpobj.clear();
@@ -222,12 +236,14 @@ void gettouchenemy() {
 	}
 }
 void eraseall(it_pvi it) {
+	if ((*it).second == IDTREE)Ntree--;
+	if ((*it).second == IDSTONE)Nstone--;
 	mp.erase(it);
 	getsighted(); gettouch();
 }
 void eraseallenemy() {
 	for (it_itpvd i = mpetch.begin(); i != mpetch.end(); i++)
-		mpenemy.erase(*i);
+		mpenemy.erase(*i), Nenemy--;
 	getsightedenemy(); gettouchenemy();
 }
 void adjust(vector2&v) {
@@ -358,12 +374,20 @@ void _restart1() {
 
 		vector2 ms(getmousex(hwnd) - _winw / 2, getmousey(hwnd) - _winh / 2);
 		figure.angle = atan2(ms.y, ms.x) + pi / 2;
-		if (GetAsyncKeyState(VK_LBUTTON)&&tick - shoottick >= velocityreload) {
+		if (GetAsyncKeyState(VK_LBUTTON)&&tick - shoottick >= velocityreload && number_stone>0) {
 			shoottick = tick;
+			number_stone--;
+			mist += 100;
 			double a = atan2(ms.y, ms.x), ca = cos(a), sa = sin(a); vector2 v(ca, sa);
 			mpbullet.push_back(make_pair(v*figuredemo.r1 + realp, v * 300));
 		}
 
+		if (tick % 50 == 0) {
+			if (rand() % 50 == 0)produceobj(IDTREE);
+			if (rand() % 30 == 0)produceobj(IDSTONE);
+			if (rand() % 10 == 0)produceobj(IDENEMY);
+		}
+		
 		updatebullet();
 		updateenemy();
 		updatekilled();
@@ -416,6 +440,7 @@ void _restart1() {
 		mist -= min(Ntree*0.004, mist*0.01);
 		paintmist(1.0*mist/100000*sin(2 * pi*tick / 500) + 2.0*mist/100000);
 		HP -= min((1.0*mist / 100000)*(1.0*mist / 100000)*0.2, 0.01);
+		if(HP<10.0)HP += 0.001;
 
 		if (GetTickCount() >= last + 1000) { last += 1000; rest = t; t = 0; }
 		
