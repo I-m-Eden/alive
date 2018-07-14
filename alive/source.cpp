@@ -45,6 +45,7 @@ vector<pair<vector2, double> >mpenemy;
 int number_wood, number_stone;
 double velocity,velocityenemy;
 int mist, Ntree, Nstone, Nenemy;
+double HP;
 
 typedef vector<pair<vector2, int>>::iterator it_pvi;
 vector<it_pvi> mpobj, mptch;
@@ -66,7 +67,7 @@ bool sighted(vector2 p, int name) {
 	if (name == IDENEMY) return (p.x >= -enemydemo.rw&&p.x <= _winw + enemydemo.rw&&p.y >= -enemydemo.rh&&p.y <= _winh + enemydemo.rh);
 }
 void producemap() {
-	mp.clear(); Ntree = 1000; Nstone = 2000; Nenemy = 200;
+	mp.clear(); Ntree = 1000; Nstone = 2000; Nenemy = 100;
 	ref(i, 1, Ntree)mp.push_back(make_pair(vector2(rand() % (mx2 - mx1) + mx1, rand() % (my2 - my1) + my1), IDTREE));
 	ref(i, 1, Nstone)mp.push_back(make_pair(vector2(rand() % (mx2 - mx1) + mx1, rand() % (my2 - my1) + my1), IDSTONE));
 	ref(i, 1, Nenemy)mpenemy.push_back(make_pair(vector2(rand() % (mx2 - mx1) + mx1, rand() % (my2 - my1) + my1), 1.0*(rand()%628)/100));
@@ -141,14 +142,14 @@ void updateenemy() {
 	for (it_pvd i = mpenemy.begin(); i != mpenemy.end(); i++) {
 		pair<vector2, double>obj = (*i); vector2 p = obj.first - realp; int name = IDENEMY; double sa = obj.second - pi / 2;
 		p = p + vector2(cos(sa), sin(sa))*velocityenemy;
-		if (norm(p) <= 1000) {
+		if (norm(p) <= 300) {
 			double sb = atan2(-p.y, -p.x), sd = sb - sa;
 			while (sd < 0)sd += 2 * pi; while (sd > 2 * pi)sd -= 2 * pi;
-			if (rand() % 4 > 0 && sd > 0.04&&sd < 2 * pi - 0.04) { if (sd < pi)sa += 0.01; else sa -= 0.01; }
+			if (rand() % 4 > 0 && sd > 0.1&&sd < 2 * pi - 0.1) { if (sd < pi)sa += 0.01; else sa -= 0.1; }
 			while (sa < 0)sa += 2 * pi; while (sa > 2 * pi)sa -= 2 * pi;
 		}
 		else {
-			if (rand() % 4 == 0)sa += 0.04; else if (rand() % 3 == 0)sa -= 0.04;
+			if (rand() % 4 == 0)sa += 0.1; else if (rand() % 3 == 0)sa -= 0.1;
 			while (sa < 0)sa += 2 * pi; while (sa > 2 * pi)sa -= 2 * pi;
 		}
 		if (p.x < mx1)p.x = mx1; if (p.x > mx2)p.x = mx2;
@@ -284,17 +285,20 @@ void initrcData() {
 void _restart1() {
 	flushmouse(); 
 
-	textbox TBtree, TBstone, TBfps, TBmist;
+	textbox TBtree, TBstone, TBfps, TBmist, TBhp;
 	TBfps.init();
 	TBfps.setbox(0, 0, _winw, _winh);
-	TBfps.setstyle(GRAY80, 30, 0, "", lgleft | lgtop);
+	TBfps.setstyle(GRAY80, 20, 0, "等线", lgleft | lgtop);
 	TBfps.text = ""; TBfps.paint();
 	TBmist = TBfps;
 	TBmist.setbox(0, TBfps.ty2, _winw, _winh);
 	TBmist.text = ""; TBmist.paint();
+	TBhp = TBmist;
+	TBhp.setbox(0, TBmist.ty2, _winw, _winh);
+	TBhp.text = ""; TBhp.paint();
 	TBtree.init();
 	TBtree.setbox(0, 0, _winw, _winh);
-	TBtree.setstyle(rgb(50, 100, 0), 30, 0, "", lgright | lgtop);
+	TBtree.setstyle(rgb(50, 100, 0), 20, 0, "等线", lgright | lgtop);
 	TBtree.text = ""; TBtree.paint();
 	TBstone = TBtree;
 	TBstone.setbox(0, TBtree.ty2, _winw, _winh);
@@ -309,8 +313,9 @@ void _restart1() {
 	figure.angle = 0;
 	initnullitpvi();
 	gainobj = null_itpvi; gainpct = 0;
+	HP = 100.0;
 
-	int tick = 0; int t = 0, rest = 0; DWORD last = GetTickCount();
+	int tick = 0, injuredtick = -1e9; int t = 0, rest = 0; DWORD last = GetTickCount();
 	while (!_isquit) {
 		tick++;
 
@@ -337,7 +342,12 @@ void _restart1() {
 		gettouch(); gettouchenemy();
 		ref(times, 0, 1)adjust(v);
 		realp = realp + v;
-		eraseallenemy();
+
+		if (!mpetch.empty()) {
+			HP = HP - mpetch.size() * 5;
+			eraseallenemy();
+			injuredtick = tick;
+		}
 
 		if (GetAsyncKeyState('Q') & 0x8000) {
 			it_pvi id = null_itpvi;
@@ -352,8 +362,8 @@ void _restart1() {
 			}
 			gainobj = id;
 			if (gainpct >= 0.5) {
-				if ((*gainobj).second == IDTREE) number_wood++, Ntree--, mist += 200; else
-					if ((*gainobj).second == IDSTONE) number_stone++, Nstone--, mist += 500;
+				if ((*gainobj).second == IDTREE) number_wood++, Ntree--, mist += 200;
+				if ((*gainobj).second == IDSTONE) number_stone++, Nstone--, mist += 500;
 				eraseall(gainobj);
 				gainobj = null_itpvi; gainpct = 0;
 			}
@@ -368,6 +378,7 @@ void _restart1() {
 		mist += 3;
 		mist -= min(Ntree*0.004, mist*0.01);
 		paintmist(1.0*mist/100000*sin(2 * pi*tick / 500) + 2.0*mist/100000);
+		HP -= min((1.0*mist / 100000)*(1.0*mist / 100000)*0.2, 0.01);
 
 		if (GetTickCount() >= last + 1000) { last += 1000; rest = t; t = 0; }
 		
@@ -379,8 +390,17 @@ void _restart1() {
 		TBtree.text = snw.c_str(); TBtree.paint();
 		string sns = "Number Of Stone: "; sns += constr(number_stone);
 		TBstone.text = sns.c_str(); TBstone.paint();
+		string snhp = "HP: "; snhp += constr((int)round(HP));
+		TBhp.textcolor = (tick - injuredtick <= 50) ? RGB(255,0,0) : GRAY80; 
+		TBhp.text = "HP: "; TBhp.paint();
+		setd(0, 0, RGB(200,22,9)); dbar(TBhp.tx2, TBhp.ty1, TBhp.tx2 + 200, TBhp.ty2);
+		setf(RGB(200, 22, 9)); fbar(TBhp.tx2, TBhp.ty1, TBhp.tx2 + (int)round(HP)*2, TBhp.ty2);
+		TBhp.text = snhp.c_str(); TBhp.paint();
 
 		flushpaint();
+
+		if ((int)round(HP) <= 0)break;
+
 		peekmsg(); delay(1);
 	}
 }
@@ -406,10 +426,7 @@ void paintbmp(int x, int y, int X, int Y) {
 		t = (min(i + p, w - 1) - max(i - p, 0) + 1)*(min(j + p, h - 1) - max(j - p, 0) + 1);
 
 		r /= t; g /= t; b /= t;
-		double q1 = 1.0*max(j - 300, 0) / 300;
-		double q2 = 1.0 - max(1.0*(sqrt((i - 400)*(i - 400) + (j - 540)*(j - 540)) - 150) / 510, 0);
-		q2 = q2 * q2 * q2;
-		double q = q1;
+		double q = 1.0*max(j - 300, 0) / 600;
 		r = (1 - q)*r + q * 200; g = (1 - q)*g + q * 200; b = (1 - q)*b + q * 200;
 		Pdot(i, j, r, g, b);
 	}

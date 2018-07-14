@@ -137,8 +137,8 @@ COLORREF inversergb(COLORREF c);						//反转rgb
 COLORREF gdot(int x, int y);							//获取像素颜色
 void pdot(int x, int y, COLORREF c);					//画像素点
 void setd(int pstyle, int pwidth, COLORREF pc);			//设置线条风格
-void setf(int bc);										//设置填充颜色
-void setf(int bstyle, int bc);							//设置填充风格和颜色
+void setf(COLORREF bc);									//设置填充颜色
+void setf(int bstyle, COLORREF bc);						//设置填充风格和颜色
 void setf(HBITMAP hbm);									//设置填充图案
 void sett(COLORREF tc, int h, int w, LPCSTR lpf);		//设置text颜色和字体
 void dbar(int x1, int y1, int x2, int y2);				//画矩形外框
@@ -414,12 +414,12 @@ void setd(int pstyle, int pwidth, COLORREF pc) {
 	_dpen=CreatePen(pstyle, pwidth, pc);
 	SelectObject(_hDCMem, _dpen);
 }
-void setf(int bc) {
+void setf(COLORREF bc) {
 	DeleteObject(_fbrush);
 	_fbrush = CreateSolidBrush(bc);
 	SelectObject(_hDCMem, _fbrush);
 }
-void setf(int bstyle, int bc) {
+void setf(int bstyle, COLORREF bc) {
 	DeleteObject(_fbrush);
 	if (bstyle==-1) _fbrush = CreateSolidBrush(bc);
 	else _fbrush = CreateHatchBrush(bstyle, bc);
