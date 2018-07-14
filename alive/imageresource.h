@@ -191,3 +191,22 @@ public:
 		ppolygon(S, Tn);
 	}
 }enemydemo;
+class bulletimage {
+private:
+	double x, y;
+public:
+	COLORREF fc;
+	int r;
+	bulletimage() {
+		fc = BLACK;
+		r = 5;
+		x = y = 0;
+	}
+	void setposition(double X, double Y) {
+		x = X; y = Y;
+	}
+	void paint() {
+		setf(fc);
+		fcircle(x, y, r);
+	}
+}bulletdemo;

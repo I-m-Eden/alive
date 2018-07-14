@@ -32,7 +32,7 @@ string constr(int s) {
 			res = constr(s / 10), res = res + char(s % 10 + 48);
 	return res;
 }
-void flushmouse() { while (islbuttondown())delay(1); while (peekmsg())delay(1); }
+void flushmouse() { while (GetAsyncKeyState(VK_LBUTTON)&0x8000)delay(1); while (peekmsg())delay(1); }
 void flushkey() { FlushConsoleInputBuffer(GetStdHandle(STD_INPUT_HANDLE)); }
 void _resume() {
 }
@@ -42,8 +42,9 @@ figureimage figure;
 vector2 realp;
 vector<pair<vector2, int> > mp;
 vector<pair<vector2, double> >mpenemy;
+vector<pair<vector2, vector2> >mpbullet;
 int number_wood, number_stone;
-double velocity,velocityenemy;
+double velocity, velocityenemy, velocitybullet, velocityreload;
 int mist, Ntree, Nstone, Nenemy;
 double HP;
 
@@ -57,6 +58,10 @@ typedef vector<pair<vector2, double>>::iterator it_pvd;
 vector<it_pvd> mpeobj, mpetch;
 typedef vector<it_pvd>::iterator it_itpvd;
 
+typedef vector<pair<vector2, vector2>>::iterator it_pvv;
+vector<it_pvv> mpdap;
+typedef vector<it_pvv>::iterator it_itpvv;
+
 void initnullitpvi() {
 	nullpvi.clear(); nullpvi.push_back(make_pair(vector2(), -1)); 
 	null_itpvi = nullpvi.begin();
@@ -67,10 +72,26 @@ bool sighted(vector2 p, int name) {
 	if (name == IDENEMY) return (p.x >= -enemydemo.rw&&p.x <= _winw + enemydemo.rw&&p.y >= -enemydemo.rh&&p.y <= _winh + enemydemo.rh);
 }
 void producemap() {
-	mp.clear(); Ntree = 1000; Nstone = 2000; Nenemy = 100;
+	mp.clear(); mpenemy.clear(); Ntree = 1000; Nstone = 2000; Nenemy = 100;
+	mpbullet.clear();
 	ref(i, 1, Ntree)mp.push_back(make_pair(vector2(rand() % (mx2 - mx1) + mx1, rand() % (my2 - my1) + my1), IDTREE));
 	ref(i, 1, Nstone)mp.push_back(make_pair(vector2(rand() % (mx2 - mx1) + mx1, rand() % (my2 - my1) + my1), IDSTONE));
 	ref(i, 1, Nenemy)mpenemy.push_back(make_pair(vector2(rand() % (mx2 - mx1) + mx1, rand() % (my2 - my1) + my1), 1.0*(rand()%628)/100));
+}
+void paintgaining(it_pvi obj, double pct) {
+	if (*obj == *null_itpvi || pct <= 0)return;
+	pct = pct * pi * 2;
+	vector2 p = (*obj).first - realp + vector2(_winw / 2, _winh / 2); int name = (*obj).second;
+	if (name == IDTREE) {
+		setf(0x68B11F);
+		fpie(p.x - treedemo.r, p.y - treedemo.r, p.x + treedemo.r, p.y + treedemo.r,
+			p.x + 1, p.y, p.x + cos(pct) * 100, p.y - sin(pct) * 100);
+	}
+	if (name == IDSTONE) {
+		setf(0x727272);
+		fpie(p.x - stonedemo.r, p.y - stonedemo.r, p.x + stonedemo.r, p.y + stonedemo.r,
+			p.x + 1, p.y, p.x + cos(pct) * 100, p.y - sin(pct) * 100);
+	}
 }
 void paintmap() {
 	setd(0, 0, GRAY170);
@@ -88,6 +109,7 @@ void paintmap() {
 				stonedemo.fc = cc;
 				stonedemo.paint();
 				stonedemo.fc = c;
+				paintgaining(gainobj, gainpct);
 			}else stonedemo.paint();
 		}
 	}
@@ -97,10 +119,11 @@ void paintmap() {
 			treedemo.setposition(p.x, p.y);
 			if (obj == *gainobj) {
 				COLORREF c = treedemo.fc; BYTE R = GetRValue(c), G = GetGValue(c), B = GetBValue(c);
-				COLORREF cc = RGB(R*(1 - gainpct), G*(1 - gainpct), B*(1 - gainpct));
+				COLORREF cc = RGB(R*(1 - gainpct / 2), G*(1 - gainpct / 2), B*(1 - gainpct / 2));
 				treedemo.fc = cc;
 				treedemo.paint();
 				treedemo.fc = c;
+				paintgaining(gainobj, gainpct);
 			}
 			else treedemo.paint();
 		}
@@ -110,6 +133,11 @@ void paintmap() {
 		enemydemo.setposition(p.x, p.y);
 		enemydemo.angle = obj.second;
 		enemydemo.paint();
+	}
+	for (it_pvv i = mpbullet.begin(); i != mpbullet.end(); i++) {
+		vector2 p = (*i).first - realp + vector2(_winw / 2, _winh / 2);
+		bulletdemo.setposition(p.x, p.y);
+		bulletdemo.paint();
 	}
 }
 void paintmist(double p) {
@@ -122,22 +150,19 @@ void paintmist(double p) {
 	}
 	endPdot();
 }
-/*
-void paintgaining(it_pvi obj, double pct) {
-	if (*obj == *null_itpvi || pct <= 0)return;
-	vector2 p = (*obj).first - realp + vector2(_winw / 2, _winh / 2); int name = (*obj).second;
-	if (name == IDTREE) {
-		setf(0x68B11F);
-		fpie(p.x - treedemo.r, p.y - treedemo.r, p.x + treedemo.r, p.y + treedemo.r, 
-			p.x + 1, p.y, p.x + cos(pct)*100, p.y - sin(pct)*100);
+void updatebullet() {
+	mpdap.clear();
+	for (it_pvv i = mpbullet.begin(); i != mpbullet.end(); i++) {
+		vector2 a = (*i).first, b = (*i).second;
+		vector2 A = a + b * (1.0 / norm(b))*velocitybullet;
+		vector2 B = b - b * (1.0 / norm(b))*velocitybullet;
+		(*i) = make_pair(A, B);
+		if ((b*B) < 1e-9)mpdap.push_back(i);
 	}
-	if (name == IDSTONE) {
-		setf(0x727272);
-		fpie(p.x - stonedemo.r, p.y - stonedemo.r, p.x + stonedemo.r, p.y + stonedemo.r, 
-			p.x + 1, p.y, p.x + cos(pct)*100, p.y - sin(pct)*100);
-	}
+	for (it_itpvv i = mpdap.begin(); i != mpdap.end(); i++)
+		mpbullet.erase(*i);
+	mpdap.clear();
 }
-*/
 void updateenemy() {
 	for (it_pvd i = mpenemy.begin(); i != mpenemy.end(); i++) {
 		pair<vector2, double>obj = (*i); vector2 p = obj.first - realp; int name = IDENEMY; double sa = obj.second - pi / 2;
@@ -145,7 +170,7 @@ void updateenemy() {
 		if (norm(p) <= 300) {
 			double sb = atan2(-p.y, -p.x), sd = sb - sa;
 			while (sd < 0)sd += 2 * pi; while (sd > 2 * pi)sd -= 2 * pi;
-			if (rand() % 4 > 0 && sd > 0.1&&sd < 2 * pi - 0.1) { if (sd < pi)sa += 0.01; else sa -= 0.1; }
+			if (rand() % 4 > 0 && sd > 0.1&&sd < 2 * pi - 0.1) { if (sd < pi)sa += 0.1; else sa -= 0.1; }
 			while (sa < 0)sa += 2 * pi; while (sa > 2 * pi)sa -= 2 * pi;
 		}
 		else {
@@ -156,6 +181,10 @@ void updateenemy() {
 		if (p.y < my1)p.y = my1; if (p.y > my2)p.y = my2;
 		(*i) = make_pair(p + realp, sa + pi / 2);
 	}
+}
+void updatekilled() {
+	//枚举bullet，枚举enemy
+	//把接触者erase掉
 }
 void getsighted() {
 	mpobj.clear();
@@ -308,19 +337,17 @@ void _restart1() {
 	producemap();
 	realp = { 0,0 };
 	number_wood = 0, number_stone = 0;
-	velocity = 2.0; mist = 0.0; velocityenemy = 1.2;
+	velocity = 2.0; velocityenemy = 1.2; velocitybullet = 5; velocityreload = 50;
+	mist = 0.0;
 	figure.setposition(_winw / 2, _winh / 2);
 	figure.angle = 0;
 	initnullitpvi();
 	gainobj = null_itpvi; gainpct = 0;
 	HP = 100.0;
 
-	int tick = 0, injuredtick = -1e9; int t = 0, rest = 0; DWORD last = GetTickCount();
+	int tick = 0, injuredtick = -1e9, shoottick = -1e9; int t = 0, rest = 0; DWORD last = GetTickCount();
 	while (!_isquit) {
 		tick++;
-
-		vector2 ms = vector2(getmousex(hwnd) - _winw / 2, getmousey(hwnd) - _winh / 2);
-		figure.angle = atan2(ms.y, ms.x) + pi / 2;
 
 		if (!iswndactive()) {
 			while (!iswndactive()) peekmsg(), delay(1);
@@ -329,7 +356,17 @@ void _restart1() {
 			while (GetAsyncKeyState(VK_ESCAPE) & 0x8000) peekmsg(), delay(1);
 		}
 
+		vector2 ms(getmousex(hwnd) - _winw / 2, getmousey(hwnd) - _winh / 2);
+		figure.angle = atan2(ms.y, ms.x) + pi / 2;
+		if (GetAsyncKeyState(VK_LBUTTON)&&tick - shoottick >= velocityreload) {
+			shoottick = tick;
+			double a = atan2(ms.y, ms.x), ca = cos(a), sa = sin(a); vector2 v(ca, sa);
+			mpbullet.push_back(make_pair(v*figuredemo.r1 + realp, v * 300));
+		}
+
+		updatebullet();
 		updateenemy();
+		updatekilled();
 		vector2 v;
 		if (GetAsyncKeyState('W') & 0x8000)v.y -= 1;
 		if (GetAsyncKeyState('S') & 0x8000)v.y += 1;
@@ -353,7 +390,7 @@ void _restart1() {
 			it_pvi id = null_itpvi;
 			for (it_itpvi i = mptch.begin(); i != mptch.end(); i++)
 				if ((**i) == (*gainobj)) { id = *i; break; }
-			if (*id != *null_itpvi) gainpct += 1.0 / 240; else {
+			if (*id != *null_itpvi) gainpct += 1.0 / 120; else {
 				for (it_itpvi i = mptch.begin(); i != mptch.end(); i++) {
 					int name = (**i).second;
 					if (name == IDTREE || name == IDSTONE) { id = *i; break; }
@@ -361,7 +398,7 @@ void _restart1() {
 				gainpct = 0;
 			}
 			gainobj = id;
-			if (gainpct >= 0.5) {
+			if (gainpct >= 1.0) {
 				if ((*gainobj).second == IDTREE) number_wood++, Ntree--, mist += 200;
 				if ((*gainobj).second == IDSTONE) number_stone++, Nstone--, mist += 500;
 				eraseall(gainobj);
