@@ -35,8 +35,6 @@ string constr(int s) {
 }
 void flushmouse() { while (GetAsyncKeyState(VK_LBUTTON)&0x8000)delay(1); while (peekmsg())delay(1); }
 void flushkey() { FlushConsoleInputBuffer(GetStdHandle(STD_INPUT_HANDLE)); }
-void _resume() {
-}
 
 int mx1, my1, mx2, my2;
 figureimage figure;
@@ -61,6 +59,59 @@ typedef vector<it_pvd>::iterator it_itpvd;
 
 typedef vector<pair<vector2, vector2>>::iterator it_pvv;
 typedef vector<it_pvv>::iterator it_itpvv;
+
+void loadgame()
+{
+	freopen("1.dat", "r", stdin);
+	figure = figuredemo;
+	scanf("%d%d%d%d", &mx1, &mx2, &my1, &my2);
+	cin >> figure.fc1 >> figure.fc2 >> figure.fc3;
+	int n, x; double a, b, c, d;
+	scanf("%d%lf%lf%d", &figure.r1, &realp.x, &realp.y, &n);
+	mp.clear(); mpenemy.clear(); mpbullet.clear();
+	ref(i, 1, n)
+	{
+		scanf("%lf%lf%d", &a, &b, &x);
+		mp.push_back(make_pair(vector2(a, b), x));
+	}
+	scanf("%d", &n);
+	ref(i, 1, n)
+	{
+		scanf("%lf%lf%lf", &a, &b, &c);
+		mpenemy.push_back(make_pair(vector2(a, b), c));
+	}
+	scanf("%d", &n);
+	ref(i, 1, n)
+	{
+		scanf("%lf%lf%lf%lf", &a, &b, &c, &d);
+		mpbullet.push_back(make_pair(vector2(a, b), vector2(c, d)));
+	}
+	scanf("%d%d%lf%lf%lf%lf", &number_wood, &number_stone, &velocity, &velocityenemy, &velocitybullet, &velocityreload);
+	scanf("%d%d%d%d%lf", &mist, &Ntree, &Nstone, &Nenemy, &HP);
+	fclose(stdin);
+}
+
+void savegame()
+{
+	freopen("1.dat", "w", stdout);
+	printf("%d %d %d %d\n", mx1, mx2, my1, my2);
+	cout << figure.fc1 << figure.fc2 << figure.fc3 << endl;
+	printf("%d\n", figure.r1);
+	printf("%lf %lf\n", realp.x, realp.y);
+	printf("%d\n", mp.size());
+	for (it_pvi it = mp.begin(); it != mp.end(); it++) 
+		printf("%lf %lf %d\n", (*it).first.x, (*it).first.y, (*it).second);
+	printf("%d\n", mpenemy.size());
+	for (it_pvd it = mpenemy.begin(); it != mpenemy.end(); it++) 
+		printf("%lf %lf %lf\n", (*it).first.x, (*it).first.y, (*it).second);
+	printf("%d\n", mpbullet.size());
+	for (it_pvv it = mpbullet.begin(); it != mpbullet.end(); it++)
+		printf("%lf %lf %lf %lf\n", (*it).first.x, (*it).first.y, (*it).second.x, (*it).second.y);
+	printf("%d %d\n", number_wood, number_stone);
+	printf("%lf %lf %lf %lf\n", velocity, velocityenemy, velocitybullet, velocityreload);
+	printf("%d %d %d %d\n%lf\n", mist, Ntree, Nstone, Nenemy, HP);
+	fclose(stdout);
+}
 
 void initnullitpvi() {
 	nullpvi.clear(); nullpvi.push_back(make_pair(vector2(), -1)); 
@@ -400,7 +451,9 @@ void _restart1() {
 		if (GetAsyncKeyState('S') & 0x8000)v.y += 1;
 		if (GetAsyncKeyState('A') & 0x8000)v.x -= 1;
 		if (GetAsyncKeyState('D') & 0x8000)v.x += 1;
-		if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) break;
+		if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) {
+			savegame(); break;
+		}
 		if (v.x || v.y) v = v * (velocity / norm(v));
 
 		getsighted(); getsightedenemy();
@@ -464,6 +517,7 @@ void _restart1() {
 
 		flushpaint();
 
+		if (!(tick % 1500)) savegame();
 		if ((int)round(HP) <= 0)break;
 
 		peekmsg(); delay(1);
@@ -704,7 +758,7 @@ position1:
 			t3.paint(); flushpaint();
 		}
 		if (t1.lbuttonrelease) {
-			_resume();
+//------------------------------------------------------------------------------------------
 			goto position1;
 		}
 		if (t2.lbuttonrelease) {
