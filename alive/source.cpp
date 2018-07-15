@@ -13,6 +13,7 @@
 //	项目属性->c/c++->代码生成->运行库 修改为 "多线程调试 (/MTd)"
 //
 #include <ctime>
+#include <algorithm>
 #include <utility>
 #include <afxwin.h>
 #include "vector2.h"
@@ -171,6 +172,7 @@ void updatebullet() {
 		if ((b*B) < 1e-9)mpbullet.erase(it), i--;
 	}
 }
+bool cmp_mp(pair<vector2, int> x, pair<vector2, int> y) { return x.first.x < y.first.x; }
 void updateenemy() {
 	for (it_pvd i = mpenemy.begin(); i != mpenemy.end(); i++) {
 		pair<vector2, double>obj = (*i); vector2 p = obj.first - realp; int name = IDENEMY; double sa = obj.second - pi / 2;
@@ -242,8 +244,9 @@ void eraseall(it_pvi it) {
 	getsighted(); gettouch();
 }
 void eraseallenemy() {
-	for (it_itpvd i = mpetch.begin(); i != mpetch.end(); i++)
-		mpenemy.erase(*i), Nenemy--;
+	for (int i = 0; i < mpetch.size(); i++) {
+		mpenemy.erase(mpetch[i]), Nenemy--;
+	}
 	getsightedenemy(); gettouchenemy();
 }
 void adjust(vector2&v) {
@@ -440,7 +443,7 @@ void _restart1() {
 		mist -= min(Ntree*0.004, mist*0.01);
 		paintmist(1.0*mist/100000*sin(2 * pi*tick / 500) + 2.0*mist/100000);
 		HP -= min((1.0*mist / 100000)*(1.0*mist / 100000)*0.2, 0.01);
-		if(HP<10.0)HP += 0.001;
+		if(HP<100.0)HP += 0.001;
 
 		if (GetTickCount() >= last + 1000) { last += 1000; rest = t; t = 0; }
 		
