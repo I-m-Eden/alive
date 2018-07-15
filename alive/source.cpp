@@ -440,7 +440,7 @@ void _restart1() {
 		mist -= min(Ntree*0.004, mist*0.01);
 		paintmist(1.0*mist/100000*sin(2 * pi*tick / 500) + 2.0*mist/100000);
 		HP -= min((1.0*mist / 100000)*(1.0*mist / 100000)*0.2, 0.01);
-		if(HP<10.0)HP += 0.001;
+		if(HP<100.0)HP += 0.001;
 
 		if (GetTickCount() >= last + 1000) { last += 1000; rest = t; t = 0; }
 		
