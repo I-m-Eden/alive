@@ -60,10 +60,24 @@ typedef vector<it_pvd>::iterator it_itpvd;
 typedef vector<pair<vector2, vector2>>::iterator it_pvv;
 typedef vector<it_pvv>::iterator it_itpvv;
 
+void producemap();
+void initgame() {
+	figure.setposition(_winw / 2, _winh / 2);
+	figure.angle = 0;
+	mx1 = -6000; my1 = -6000; mx2 = 6000; my2 = 6000;
+	producemap();
+	realp = { 0,0 };
+	number_wood = 0, number_stone = 0;
+	velocity = 2.0; velocityenemy = 1.2; velocitybullet = 5; velocityreload = 50;
+	mist = 0.0;
+	HP = 100.0;
+}
+
 void loadgame()
 {
 	freopen("1.dat", "r", stdin);
 	figure = figuredemo;
+	figure.setposition(_winw / 2, _winh / 2);
 	scanf("%d%d%d%d", &mx1, &mx2, &my1, &my2);
 	cin >> figure.fc1 >> figure.fc2 >> figure.fc3;
 	int n, x; double a, b, c, d;
@@ -95,7 +109,7 @@ void savegame()
 {
 	freopen("1.dat", "w", stdout);
 	printf("%d %d %d %d\n", mx1, mx2, my1, my2);
-	cout << figure.fc1 << figure.fc2 << figure.fc3 << endl;
+	cout << figure.fc1 << " " << figure.fc2 << " " << figure.fc3 << endl;
 	printf("%d\n", figure.r1);
 	printf("%lf %lf\n", realp.x, realp.y);
 	printf("%d\n", mp.size());
@@ -382,7 +396,7 @@ void initrcData() {
 			Sb[i][j] = Sb[i - 1][j] + Sb[i][j - 1] - Sb[i - 1][j - 1] + arrbitmap[i][j].rgbtBlue;
 }
 
-void _restart1() {
+void _restart1(bool ifload = 0) {
 	flushmouse(); 
 
 	textbox TBtree, TBstone, TBfps, TBmist, TBhp;
@@ -404,17 +418,10 @@ void _restart1() {
 	TBstone.setbox(0, TBtree.ty2, _winw, _winh);
 	TBstone.text = ""; TBstone.paint();
 	
-	mx1 = -6000; my1 = -6000; mx2 = 6000; my2 = 6000;
-	producemap();
-	realp = { 0,0 };
-	number_wood = 0, number_stone = 0;
-	velocity = 2.0; velocityenemy = 1.2; velocitybullet = 5; velocityreload = 50;
-	mist = 0.0;
-	figure.setposition(_winw / 2, _winh / 2);
-	figure.angle = 0;
+	if (ifload)loadgame();else initgame();
+
 	initnullitpvi();
 	gainobj = null_itpvi; gainpct = 0;
-	HP = 100.0;
 
 	int tick = 0, injuredtick = -1e9, shoottick = -1e9; int t = 0, rest = 0; DWORD last = GetTickCount();
 	while (!_isquit) {
@@ -758,7 +765,7 @@ position1:
 			t3.paint(); flushpaint();
 		}
 		if (t1.lbuttonrelease) {
-//------------------------------------------------------------------------------------------
+			_restart1(1);
 			goto position1;
 		}
 		if (t2.lbuttonrelease) {
