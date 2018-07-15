@@ -244,9 +244,10 @@ void eraseall(it_pvi it) {
 	getsighted(); gettouch();
 }
 void eraseallenemy() {
-	for (int i = 0; i < mpetch.size(); i++) {
-		mpenemy.erase(mpetch[i]), Nenemy--;
-	}
+	if (mpetch.empty())return;
+	mpenemy.erase(mpetch[0]);
+	mpetch.erase(mpetch.begin());
+	Nenemy--;
 	getsightedenemy(); gettouchenemy();
 }
 void adjust(vector2&v) {
@@ -408,11 +409,10 @@ void _restart1() {
 		realp = realp + v;
 
 		if (!mpetch.empty()) {
-			HP = HP - mpetch.size() * 5;
+			HP = HP - 5;
 			eraseallenemy();
 			injuredtick = tick;
 		}
-
 		if (GetAsyncKeyState('Q') & 0x8000) {
 			it_pvi id = null_itpvi;
 			for (it_itpvi i = mptch.begin(); i != mptch.end(); i++)
