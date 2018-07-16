@@ -7,6 +7,7 @@ using namespace std;
 const int IDTREE = 1;
 const int IDSTONE = 2;
 const int IDENEMY = 3;
+const int IDENEMY2 = 4;
 class figureimage {
 private:
 	void drawellipse(COLORREF fc, double x1, double y1, double x2, double y2, int d) {
@@ -210,3 +211,56 @@ public:
 		fcircle(x, y, r);
 	}
 }bulletdemo;
+class enemy2image {
+private:
+	int Sn; POINT S[10];
+	int ps1, pw1; COLORREF pc1;
+	int ps2, pw2; COLORREF pc2;
+	double x, y;
+	double sz;
+	POINT s[4] = {
+		{-30,35},
+		{0,-30},
+		{30,35},
+		{0,15}
+	};
+	POINT t[3] = {
+		{-20,20},
+		{-10,0},
+		{-10,10}
+	};
+public:
+	COLORREF fc1, fc2;
+	double angle;
+	double rw, rh;
+	enemy2image() {
+		rw = 30.0; rh = 35.0;
+		ps1 = 0; pw1 = 0; pc1 = 0x788870;
+		fc1 = 0xA0B0A0;
+		ps2 = 0; pw2 = 0; pc2 = 0xB2EB79;
+		fc2 = 0x8FCF4F;
+		angle = 0;
+		x = y = 0;
+	}
+	void setposition(double X, double Y) {
+		x = X; y = Y;
+	}
+	void paint() {
+		double ca = cos(angle), sa = sin(angle);
+		for (int i = 0; i < 4; ++i)S[i] = s[i];
+		for (int i = 0; i < 4; ++i)S[i] = { (int)round(sz*(S[i].x*ca - S[i].y*sa) + x),(int)round(sz*(S[i].x*sa + S[i].y*ca) + y) };
+		setd(ps1, pw1, pc1);
+		setf(fc1);
+		ppolygon(S, 4);
+		for (int i = 0; i < 3; ++i)S[i] = t[i];
+		for (int i = 0; i < 3; ++i)S[i] = { (int)round(sz*(S[i].x*ca - S[i].y*sa) + x),(int)round(sz*(S[i].x*sa + S[i].y*ca) + y) };
+		setd(ps1, pw1, pc1);
+		setf(fc2);
+		ppolygon(S, 3);
+		for (int i = 0; i < 3; ++i)S[i] = t[i], S[i].x = -S[i].x;
+		for (int i = 0; i < 3; ++i)S[i] = { (int)round(sz*(S[i].x*ca - S[i].y*sa) + x),(int)round(sz*(S[i].x*sa + S[i].y*ca) + y) };
+		setd(ps1, pw1, pc1);
+		setf(fc2);
+		ppolygon(S, 3);
+	}
+}enemy2demo;
