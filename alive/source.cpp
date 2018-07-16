@@ -44,7 +44,7 @@ vector<pair<vector2, double> >mpenemy;
 vector<pair<vector2, vector2> >mpbullet;
 int number_wood, number_stone;
 double velocity, velocityenemy, velocitybullet, velocityreload;
-int mist, Ntree, Nstone, Nenemy;
+double mist; int Ntree, Nstone, Nenemy;
 double HP;
 
 typedef vector<pair<vector2, int>>::iterator it_pvi;
@@ -60,11 +60,24 @@ typedef vector<it_pvd>::iterator it_itpvd;
 typedef vector<pair<vector2, vector2>>::iterator it_pvv;
 typedef vector<it_pvv>::iterator it_itpvv;
 
+void _shop() {
+	flushmouse();
+	beginPdot();
+	for (int i = 0; i < _pDataSize; ++i)
+		_pData[i] = (int)round(_pData[i] * 0.3 + 255 * 0.7);
+	endPdot();
+	flushpaint();
+	while (!_isquit) {
+		peekmsg(); delay(1);
+		if (iskeydown(VK_ESCAPE))break;
+	}
+}
+
 void producemap();
 void initgame() {
 	figure.setposition(_winw / 2, _winh / 2);
 	figure.angle = 0;
-	mx1 = -6000; my1 = -6000; mx2 = 6000; my2 = 6000;
+	mx1 = -3000; my1 = -3000; mx2 = 3000; my2 = 3000;
 	producemap();
 	realp = { 0,0 };
 	number_wood = 0, number_stone = 0;
@@ -72,7 +85,6 @@ void initgame() {
 	mist = 0.0;
 	HP = 100.0;
 }
-
 void loadgame()
 {
 	freopen("1.dat", "r", stdin);
@@ -101,10 +113,9 @@ void loadgame()
 		mpbullet.push_back(make_pair(vector2(a, b), vector2(c, d)));
 	}
 	scanf("%d%d%lf%lf%lf%lf", &number_wood, &number_stone, &velocity, &velocityenemy, &velocitybullet, &velocityreload);
-	scanf("%d%d%d%d%lf", &mist, &Ntree, &Nstone, &Nenemy, &HP);
+	scanf("%lf%d%d%d%lf", &mist, &Ntree, &Nstone, &Nenemy, &HP);
 	fclose(stdin);
 }
-
 void savegame()
 {
 	freopen("1.dat", "w", stdout);
@@ -123,7 +134,7 @@ void savegame()
 		printf("%lf %lf %lf %lf\n", (*it).first.x, (*it).first.y, (*it).second.x, (*it).second.y);
 	printf("%d %d\n", number_wood, number_stone);
 	printf("%lf %lf %lf %lf\n", velocity, velocityenemy, velocitybullet, velocityreload);
-	printf("%d %d %d %d\n%lf\n", mist, Ntree, Nstone, Nenemy, HP);
+	printf("%lf %d %d %d\n%lf\n", mist, Ntree, Nstone, Nenemy, HP);
 	fclose(stdout);
 }
 
@@ -137,7 +148,7 @@ bool sighted(vector2 p, int name) {
 	if (name == IDENEMY) return (p.x >= -enemydemo.rw&&p.x <= _winw + enemydemo.rw&&p.y >= -enemydemo.rh&&p.y <= _winh + enemydemo.rh);
 }
 void producemap() {
-	mp.clear(); mpenemy.clear(); Ntree = 1000; Nstone = 2000; Nenemy = 100;
+	mp.clear(); mpenemy.clear(); Ntree = 250; Nstone = 500; Nenemy = 25;
 	mpbullet.clear();
 	ref(i, 1, Ntree)mp.push_back(make_pair(vector2(rand() % (mx2 - mx1) + mx1, rand() % (my2 - my1) + my1), IDTREE));
 	ref(i, 1, Nstone)mp.push_back(make_pair(vector2(rand() % (mx2 - mx1) + mx1, rand() % (my2 - my1) + my1), IDSTONE));
@@ -153,6 +164,9 @@ void produceobj(int name) {
 	vector2 p = randomposition(name);
 	if (name == IDTREE || name == IDSTONE)mp.push_back(make_pair(p, name));
 	if (name == IDENEMY)mpenemy.push_back(make_pair(p, 1.0*(rand()%628)/100));
+	if (name == IDTREE)Ntree++;
+	if (name == IDSTONE)Nstone++;
+	if (name == IDENEMY)Nenemy++;
 }
 void paintgaining(it_pvi obj, double pct) {
 	if (*obj == *null_itpvi || pct <= 0)return;
@@ -431,7 +445,8 @@ void _restart1(bool ifload = 0) {
 			while (!iswndactive()) peekmsg(), delay(1);
 			last = GetTickCount();
 			flushkey(); flushmouse();
-			while (GetAsyncKeyState(VK_ESCAPE) & 0x8000) peekmsg(), delay(1);
+			while (GetAsyncKeyState(VK_ESCAPE))peekmsg(), delay(1);
+			continue;
 		}
 
 		vector2 ms(getmousex(hwnd) - _winw / 2, getmousey(hwnd) - _winh / 2);
@@ -467,11 +482,21 @@ void _restart1(bool ifload = 0) {
 		gettouch(); gettouchenemy();
 		ref(times, 0, 1)adjust(v);
 		realp = realp + v;
+		if (realp.x < mx1)realp.x = mx1;
+		if (realp.x > mx2)realp.x = mx2;
+		if (realp.y < my1)realp.y = my1;
+		if (realp.y > my2)realp.y = my2;
 
 		if (!mpetch.empty()) {
 			HP = HP - 5;
 			eraseallenemy();
 			injuredtick = tick;
+		}
+		if (GetAsyncKeyState('E') & 0x8000) {
+			_shop();
+			flushkey(); flushmouse();
+			while (GetAsyncKeyState(VK_ESCAPE))peekmsg(), delay(1);
+			continue;
 		}
 		if (GetAsyncKeyState('Q') & 0x8000) {
 			it_pvi id = null_itpvi;
@@ -499,8 +524,8 @@ void _restart1(bool ifload = 0) {
 		paintmap();
 		figure.paint();
 
-		mist += 3;
-		mist -= min(Ntree*0.004, mist*0.01);
+		mist += 1.5;
+		mist -= min(Ntree*0.01, mist*0.01);
 		paintmist(1.0*mist/100000*sin(2 * pi*tick / 500) + 2.0*mist/100000);
 		HP -= min((1.0*mist / 100000)*(1.0*mist / 100000)*0.2, 0.01);
 		if(HP<100.0)HP += 0.001;
@@ -509,7 +534,7 @@ void _restart1(bool ifload = 0) {
 		
 		string snf = "FPS: "; snf += constr(rest);
 		TBfps.text = snf.c_str(); TBfps.paint();
-		string snm = "Mist: "; snm += constr(mist);
+		string snm = "Mist: "; snm += constr((int)round(mist));
 		TBmist.text = snm.c_str(); TBmist.paint();
 		string snw = "Number Of Wood: "; snw += constr(number_wood);
 		TBtree.text = snw.c_str(); TBtree.paint();
