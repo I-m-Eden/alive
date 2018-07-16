@@ -225,9 +225,9 @@ private:
 		{0,15}
 	};
 	POINT t[3] = {
-		{-20,20},
-		{-10,0},
-		{-10,10}
+		{-18,15},
+		{-3,-10},
+		{-3,5}
 	};
 public:
 	COLORREF fc1, fc2;
@@ -236,11 +236,14 @@ public:
 	enemy2image() {
 		rw = 30.0; rh = 35.0;
 		ps1 = 0; pw1 = 0; pc1 = 0x788870;
-		fc1 = 0xA0B0A0;
+		fc1 = rgb(237, 220, 12);
 		ps2 = 0; pw2 = 0; pc2 = 0xB2EB79;
-		fc2 = 0x8FCF4F;
-		angle = 0;
+		fc2 = rgb(240, 187, 77);
+		angle = 0; setsize(0.5);
 		x = y = 0;
+	}
+	void setsize(double Sz) {
+		sz = Sz; rw = rw * sz; rh = rh * sz;
 	}
 	void setposition(double X, double Y) {
 		x = X; y = Y;
