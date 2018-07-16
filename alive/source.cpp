@@ -9,7 +9,7 @@
 //	用Visual Studio 2017编译之前注意事项：
 //	项目属性->c/c++->预处理器->预处理器定义 中添加：
 //	_CRT_SECURE_NO_DEPRECATE
-//	_CRT_NONSTDC_NO_DEPRECATE
+//	_CRT_NONSTDC_NO_DEPRECATEaa
 //	项目属性->c/c++->代码生成->运行库 修改为 "多线程调试 (/MTd)"
 //
 #include <ctime>
@@ -43,8 +43,8 @@ vector<pair<vector2, int> > mp;
 vector<pair<vector2, double> >mpenemy, mpenemy2;
 vector<pair<vector2, vector2> >mpbullet;
 int number_wood, number_stone;
-double velocity, velocityenemy, velocitybullet, velocityreload;
-int mist, Ntree, Nstone, Nenemy, Nenemy2;
+double velocity, velocityenemy, velocityenemy2, velocitybullet, velocityreload;
+double mist; int Ntree, Nstone, Nenemy, Nenemy2;
 double HP;
 
 typedef vector<pair<vector2, int>>::iterator it_pvi;
@@ -60,15 +60,28 @@ typedef vector<it_pvd>::iterator it_itpvd;
 typedef vector<pair<vector2, vector2>>::iterator it_pvv;
 typedef vector<it_pvv>::iterator it_itpvv;
 
+void _shop() {
+	flushmouse();
+	beginPdot();
+	for (int i = 0; i < _pDataSize; ++i)
+		_pData[i] = (int)round(_pData[i] * 0.3 + 255 * 0.7);
+	endPdot();
+	flushpaint();
+	while (!_isquit) {
+		peekmsg(); delay(1);
+		if (iskeydown(VK_ESCAPE))break;
+	}
+}
+
 void producemap();
 void initgame() {
 	figure.setposition(_winw / 2, _winh / 2);
 	figure.angle = 0;
-	mx1 = -6000; my1 = -6000; mx2 = 6000; my2 = 6000;
+	mx1 = -3000; my1 = -3000; mx2 = 3000; my2 = 3000;
 	producemap();
 	realp = { 0,0 };
 	number_wood = 0, number_stone = 0;
-	velocity = 2.0; velocityenemy = 1.2; velocitybullet = 5; velocityreload = 50;
+	velocity = 2.0; velocityenemy = 1.2; velocityenemy2 = 1.5; velocitybullet = 5; velocityreload = 50;
 	mist = 0.0;
 	HP = 100.0;
 }
@@ -106,8 +119,8 @@ void loadgame()
 		scanf("%lf%lf%lf%lf", &a, &b, &c, &d);
 		mpbullet.push_back(make_pair(vector2(a, b), vector2(c, d)));
 	}
-	scanf("%d%d%lf%lf%lf%lf", &number_wood, &number_stone, &velocity, &velocityenemy, &velocitybullet, &velocityreload);
-	scanf("%d%d%d%d%d%lf", &mist, &Ntree, &Nstone, &Nenemy, &Nenemy2, &HP);
+	scanf("%d%d%lf%lf%lf%lf%lf", &number_wood, &number_stone, &velocity, &velocityenemy, &velocityenemy2, &velocitybullet, &velocityreload);
+	scanf("%lf%d%d%d%d%lf", &mist, &Ntree, &Nstone, &Nenemy, &Nenemy2, &HP);
 	fclose(stdin);
 }
 
@@ -131,8 +144,8 @@ void savegame()
 	for (it_pvv it = mpbullet.begin(); it != mpbullet.end(); it++)
 		printf("%lf %lf %lf %lf\n", (*it).first.x, (*it).first.y, (*it).second.x, (*it).second.y);
 	printf("%d %d\n", number_wood, number_stone);
-	printf("%lf %lf %lf %lf\n", velocity, velocityenemy, velocitybullet, velocityreload);
-	printf("%d %d %d %d %d\n%lf\n", mist, Ntree, Nstone, Nenemy, Nenemy2, HP);
+	printf("%lf %lf %lf %lf %lf\n", velocity, velocityenemy, velocityenemy2, velocitybullet, velocityreload);
+	printf("%lf %d %d %d %d\n%lf\n", mist, Ntree, Nstone, Nenemy, Nenemy2, HP);
 	fclose(stdout);
 }
 
@@ -147,7 +160,7 @@ bool sighted(vector2 p, int name) {
 	if (name == IDENEMY2) return (p.x >= -enemy2demo.rw&&p.x <= _winw + enemy2demo.rw&&p.y >= -enemy2demo.rh&&p.y <= _winh + enemy2demo.rh);
 }
 void producemap() {
-	mp.clear(); mpenemy.clear(); mpenemy2.clear(); Ntree = 1000; Nstone = 2000; Nenemy = 100; Nenemy2 = 100;
+	mp.clear(); mpenemy.clear(); mpenemy2.clear(); Ntree = 250; Nstone = 500; Nenemy = 25; Nenemy2 = 25;
 	mpbullet.clear();
 	ref(i, 1, Ntree)mp.push_back(make_pair(vector2(rand() % (mx2 - mx1) + mx1, rand() % (my2 - my1) + my1), IDTREE));
 	ref(i, 1, Nstone)mp.push_back(make_pair(vector2(rand() % (mx2 - mx1) + mx1, rand() % (my2 - my1) + my1), IDSTONE));
@@ -157,7 +170,7 @@ void producemap() {
 vector2 randomposition(int name) {
 	while (1) {
 		vector2 p = vector2(rand() % (mx2 - mx1) + mx1, rand() % (my2 - my1) + my1);
-		if (!sighted(p - realp, name))return p;
+		if (!sighted(p - realp + vector2(_winw/2, _winh/2), name))return p;
 	}
 }
 void produceobj(int name) {
@@ -165,6 +178,10 @@ void produceobj(int name) {
 	if (name == IDTREE || name == IDSTONE)mp.push_back(make_pair(p, name));
 	if (name == IDENEMY)mpenemy.push_back(make_pair(p, 1.0*(rand() % 628) / 100));
 	if (name == IDENEMY2)mpenemy2.push_back(make_pair(p, 1.0*(rand() % 628) / 100));
+	if (name == IDTREE)Ntree++;
+	if (name == IDSTONE)Nstone++;
+	if (name == IDENEMY)Nenemy++;
+	if (name == IDENEMY2)Nenemy2++;
 }
 void paintgaining(it_pvi obj, double pct) {
 	if (*obj == *null_itpvi || pct <= 0)return;
@@ -276,7 +293,7 @@ void updateenemy() {
 	}
 	for (it_pvd i = mpenemy2.begin(); i != mpenemy2.end(); i++) {
 		pair<vector2, double>obj = (*i); vector2 p = obj.first - realp; int name = IDENEMY2; double sa = obj.second - pi / 2;
-		p = p + vector2(cos(sa), sin(sa))*velocityenemy;
+		p = p + vector2(cos(sa), sin(sa))*velocityenemy2;
 		if (norm(p) <= 300) {
 			double sb = atan2(-p.y, -p.x), sd = sb - sa;
 			while (sd < 0)sd += 2 * pi; while (sd > 2 * pi)sd -= 2 * pi;
@@ -293,7 +310,7 @@ void updateenemy() {
 	}
 }
 void updatekilled() {
-	for (int i = 0; i < mpbullet.size(); i++) {
+	for (int i = 0; i < mpbullet.size(); i++)
 		for (int j = 0; j < mpenemy.size(); j++) {
 			it_pvv it = mpbullet.begin() + i;
 			it_pvd jt = mpenemy.begin() + j;
@@ -301,6 +318,7 @@ void updatekilled() {
 				mpbullet.erase(it); mpenemy.erase(jt); Nenemy--; i--; break;
 			}
 		}
+	for (int i = 0; i < mpbullet.size(); i++)
 		for (int j = 0; j < mpenemy2.size(); j++) {
 			it_pvv it = mpbullet.begin() + i;
 			it_pvd jt = mpenemy2.begin() + j;
@@ -308,7 +326,6 @@ void updatekilled() {
 				mpbullet.erase(it); mpenemy2.erase(jt); Nenemy2--; i--; break;
 			}
 		}
-	}
 }
 void getsighted() {
 	mpobj.clear();
@@ -499,6 +516,7 @@ void _restart1(bool ifload = 0) {
 			last = GetTickCount();
 			flushkey(); flushmouse();
 			while (GetAsyncKeyState(VK_ESCAPE) & 0x8000) peekmsg(), delay(1);
+			continue;
 		}
 
 		vector2 ms(getmousex(hwnd) - _winw / 2, getmousey(hwnd) - _winh / 2);
@@ -521,6 +539,12 @@ void _restart1(bool ifload = 0) {
 		updatebullet();
 		updateenemy();
 		updatekilled();
+		if (GetAsyncKeyState('E') & 0x8000) {
+			_shop();
+			flushkey(); flushmouse();
+			while (GetAsyncKeyState(VK_ESCAPE))peekmsg(), delay(1);
+			continue;
+		}
 		vector2 v;
 		if (GetAsyncKeyState('W') & 0x8000)v.y -= 1;
 		if (GetAsyncKeyState('S') & 0x8000)v.y += 1;
@@ -535,6 +559,10 @@ void _restart1(bool ifload = 0) {
 		gettouch(); gettouchenemy(); gettouchenemy2();
 		ref(times, 0, 1)adjust(v);
 		realp = realp + v;
+		if (realp.x < mx1)realp.x = mx1;
+		if (realp.x > mx2)realp.x = mx2;
+		if (realp.y < my1)realp.y = my1;
+		if (realp.y > my2)realp.y = my2;
 
 		if (!mpetch.empty()) {
 			HP = HP - 5;
@@ -572,8 +600,8 @@ void _restart1(bool ifload = 0) {
 		paintmap();
 		figure.paint();
 
-		mist += 3;
-		mist -= min(Ntree*0.004, mist*0.01);
+		mist += 1.5;
+		mist -= min(Ntree*0.01, mist*0.01);
 		paintmist(1.0*mist/100000*sin(2 * pi*tick / 500) + 2.0*mist/100000);
 		HP -= min((1.0*mist / 100000)*(1.0*mist / 100000)*0.2, 0.01);
 		if(HP<100.0)HP += 0.001;
