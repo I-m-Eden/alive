@@ -84,29 +84,15 @@ vector2 realp, realv;
 linkst<pvi> mp;
 linkst<pvd> mpenemy1, mpenemy2;
 linkst<pvv> mpbullet;
-//vector<pair<vector2, int> > mp;
-//vector<pair<vector2, double> >mpenemy, mpenemy2;
-//vector<pair<vector2, vector2> >mpbullet;
 int number_wood, number_stone;
 double velocity, velocityenemy, velocityenemy2, velocitybullet, velocityreload;
 double mist; int Ntree, Nstone, Nenemy, Nenemy2;
-double HP;
+double HP, FP;
 
 linkst<p_pvi>mpobj, mptch;
 p_pvi gainobj; double gainpct;
-//typedef vector<pair<vector2, int>>::iterator it_pvi;
-//vector<it_pvi> mpobj, mptch;
-//typedef vector<it_pvi>::iterator it_itpvi;
-//it_pvi gainobj; double gainpct;
-//vector<pair<vector2, int> > nullpvi; it_pvi null_itpvi;
 
 linkst<p_pvd>mpe1obj, mpe1tch, mpe2obj, mpe2tch;
-//typedef vector<pair<vector2, double>>::iterator it_pvd;
-//vector<it_pvd> mpeobj, mpetch, mpe2obj, mpe2tch;
-//typedef vector<it_pvd>::iterator it_itpvd;
-
-//typedef vector<pair<vector2, vector2>>::iterator it_pvv;
-//typedef vector<it_pvv>::iterator it_itpvv;
 
 void _shop() {
 	flushmouse();
@@ -131,7 +117,7 @@ void initgame() {
 	number_wood = 0, number_stone = 0;
 	velocity = 2.5; velocityenemy = 1.2; velocityenemy2 = 1.5; velocitybullet = 5; velocityreload = 50;
 	mist = 0.0;
-	HP = 100.0;
+	HP = 100.0; FP = 100.0;
 }
 
 void loadgame()
@@ -164,7 +150,7 @@ void loadgame()
 		mpbullet.insert(make_pair(vector2(a, b), vector2(c, d)));
 	}
 	scanf("%d%d%lf%lf%lf%lf%lf", &number_wood, &number_stone, &velocity, &velocityenemy, &velocityenemy2, &velocitybullet, &velocityreload);
-	scanf("%lf%d%d%d%d%lf", &mist, &Ntree, &Nstone, &Nenemy, &Nenemy2, &HP);
+	scanf("%lf%d%d%d%d%lf%lf", &mist, &Ntree, &Nstone, &Nenemy, &Nenemy2, &HP, &FP);
 	fclose(stdin);
 }
 
@@ -189,7 +175,7 @@ void savegame()
 		printf("%lf %lf %lf %lf\n", (*it).s.first.x, (*it).s.first.y, (*it).s.second.x, (*it).s.second.y);
 	printf("%d %d\n", number_wood, number_stone);
 	printf("%lf %lf %lf %lf %lf\n", velocity, velocityenemy, velocityenemy2, velocitybullet, velocityreload);
-	printf("%lf %d %d %d %d\n%lf\n", mist, Ntree, Nstone, Nenemy, Nenemy2, HP);
+	printf("%lf %d %d %d %d\n%lf\n%lf\n", mist, Ntree, Nstone, Nenemy, Nenemy2, HP, FP);
 	fclose(stdout);
 }
 
@@ -426,21 +412,22 @@ void eraseall(p_pvi it) {
 	if ((*it).s.second == IDTREE)Ntree--;
 	if ((*it).s.second == IDSTONE)Nstone--;
 	mp.erase(it);
-	getsighted(); gettouch();
 }
 void eraseallenemy() {
 	if (!mpe1tch.sz)return;
-	mpenemy1.erase(mpe1tch.begin()->s);
-	mpe1tch.erase(mpe1tch.begin());
-	Nenemy--;
-	getsightedenemy(); gettouchenemy();
+	for (p_ppvd it = mpe1tch.begin(); !it->isend; it = it->R) {
+		mpenemy1.erase(it->s);
+		it = it->L; mpe1tch.erase(it->R);
+		Nenemy--;
+	}
 }
 void eraseallenemy2() {
 	if (!mpe2tch.sz)return;
-	mpenemy2.erase(mpe2tch.begin()->s);
-	mpe2tch.erase(mpe2tch.begin());
-	Nenemy--;
-	getsightedenemy(); gettouchenemy();
+	for (p_ppvd it = mpe2tch.begin(); !it->isend; it = it->R) {
+		mpenemy2.erase(it->s);
+		it = it->L; mpe2tch.erase(it->R);
+		Nenemy--;
+	}
 }
 void adjust(vector2&v) {
 	double a0 = 1e9, a1 = 1e9;
@@ -526,7 +513,7 @@ void initrcData() {
 void _restart1(bool ifload = 0) {
 	flushmouse(); 
 
-	textbox TBtree, TBstone, TBfps, TBmist, TBhp;
+	textbox TBtree, TBstone, TBfps, TBmist, TBhp, TBfp;
 	TBfps.init();
 	TBfps.setbox(0, 0, _winw, _winh);
 	TBfps.setstyle(GRAY80, 20, 0, "等线", lgleft | lgtop);
@@ -536,7 +523,12 @@ void _restart1(bool ifload = 0) {
 	TBmist.text = ""; TBmist.paint();
 	TBhp = TBmist;
 	TBhp.setbox(0, TBmist.ty2, _winw, _winh);
-	TBhp.text = ""; TBhp.paint();
+	TBhp.text = "HP: "; TBhp.paint();
+	TBfp = TBhp;
+	TBfp.setbox(0, TBhp.ty2, _winw, _winh);
+	TBfp.text = "FP: "; TBfp.paint(); 
+	TBfp.x1 = (TBhp.tx2 - TBhp.tx1) - (TBfp.tx2 - TBfp.tx1); TBfp.paint();
+
 	TBtree.init();
 	TBtree.setbox(0, 0, _winw, _winh);
 	TBtree.setstyle(rgb(50, 100, 0), 20, 0, "等线", lgright | lgtop);
@@ -616,12 +608,12 @@ void _restart1(bool ifload = 0) {
 		if (realp.y > my2)realp.y = my2;
 
 		if (mpe1tch.sz) {
-			HP = HP - 5;
+			HP = HP - 5 * mpe1tch.sz;
 			eraseallenemy();
 			injuredtick = tick;
 		}
 		if (mpe2tch.sz) {
-			HP = HP - 3;
+			HP = HP - 3 * mpe2tch.sz;
 			eraseallenemy2();
 			injuredtick = tick;
 		}
@@ -645,6 +637,7 @@ void _restart1(bool ifload = 0) {
 		}
 		if (isQ) {
 			if (gainpct >= 1.0) {
+				FP -= 5;
 				if ((gainobj->s).second == IDTREE) number_wood++, Ntree--, mist += 200;
 				if ((gainobj->s).second == IDSTONE) number_stone++, Nstone--, mist += 500;
 				eraseall(gainobj);
@@ -662,6 +655,7 @@ void _restart1(bool ifload = 0) {
 		paintmist(1.0*mist/100000*sin(2 * pi*tick / 500) + 2.0*mist/100000);
 		HP -= min((1.0*mist / 100000)*(1.0*mist / 100000)*0.2, 0.01);
 		if(HP<100.0)HP += 0.001;
+		FP -= 0.005;
 
 		if (GetTickCount() >= last + 1000) { last += 1000; rest = t; t = 0; }
 		
@@ -676,9 +670,16 @@ void _restart1(bool ifload = 0) {
 		string snhp = "HP: "; snhp += constr((int)round(HP));
 		TBhp.textcolor = (tick - injuredtick <= 50) ? RGB(255,0,0) : GRAY80; 
 		TBhp.text = "HP: "; TBhp.paint();
-		setd(0, 0, RGB(200,22,9)); dbar(TBhp.tx2, TBhp.ty1, TBhp.tx2 + 200, TBhp.ty2);
-		setf(RGB(200, 22, 9)); fbar(TBhp.tx2, TBhp.ty1, TBhp.tx2 + (int)round(HP)*2, TBhp.ty2);
+		setd(0, 0, RGB(200, 22, 9)); dbar(TBhp.tx2, TBhp.ty1, TBhp.tx2 + 200, TBhp.ty2);
+		setf(RGB(200, 22, 9)); fbar(TBhp.tx2, TBhp.ty1, TBhp.tx2 + (int)round(HP) * 2, TBhp.ty2);
 		TBhp.text = snhp.c_str(); TBhp.paint();
+		string snfp = "FP: "; snfp += constr((int)round(FP));
+		TBfp.textcolor = GRAY80;
+		TBfp.text = "FP: "; TBfp.paint();
+		setd(0, 0, RGB(70, 130, 200)); dbar(TBfp.tx2, TBfp.ty1, TBfp.tx2 + 200, TBfp.ty2);
+		setf(RGB(70,130,200)); fbar(TBfp.tx2, TBfp.ty1, TBfp.tx2 + (int)round(FP) * 2, TBfp.ty2);
+		TBfp.text = snfp.c_str(); TBfp.paint();
+
 
 		flushpaint();
 
