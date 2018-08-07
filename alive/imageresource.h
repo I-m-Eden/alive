@@ -6,6 +6,7 @@
 using namespace std;
 const int IDTREE = 1;
 const int IDSTONE = 2;
+const int IDFRUIT = 5;
 const int IDENEMY = 3;
 const int IDENEMY2 = 4;
 class figureimage {
@@ -96,6 +97,31 @@ public:
 		pcircle(x, y, r);
 	}
 }stonedemo;
+class fruitimage {
+private:
+	int ps, pw; COLORREF pc, spc;
+	double x, y;
+public:
+	COLORREF fc, sfc;
+	int r, sr;
+	fruitimage() {
+		ps = 0; pw = 0; pc = RGB(250, 210, 70); spc = RGB(250, 250, 100);
+		fc = RGB(200, 160, 20); sfc = RGB(200, 230, 50);
+		r = 12; sr = 6;
+		x = y = 0;
+	}
+	void setposition(double X, double Y) {
+		x = X; y = Y;
+	}
+	void paint() {
+		setd(ps, pw, pc);
+		setf(fc);
+		pcircle(x, y, r);
+		setd(ps, pw, spc);
+		setf(sfc);
+		pcircle(x, y, sr);
+	}
+}fruitdemo;
 class enemyimage {
 private:
 	POINT S[50];

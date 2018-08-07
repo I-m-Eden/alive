@@ -122,6 +122,7 @@
     <ClCompile Include="source.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="datastruct.h" />
     <ClInclude Include="imageresource.h" />
     <ClInclude Include="coloresource.h" />
     <ClInclude Include="resource.h" />
