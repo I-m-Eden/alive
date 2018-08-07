@@ -38,7 +38,7 @@ void flushkey() { FlushConsoleInputBuffer(GetStdHandle(STD_INPUT_HANDLE)); }
 
 int mx1, my1, mx2, my2;
 figureimage figure;
-vector2 realp;
+vector2 realp, realv;
 vector<pair<vector2, int> > mp;
 vector<pair<vector2, double> >mpenemy, mpenemy2;
 vector<pair<vector2, vector2> >mpbullet;
@@ -79,9 +79,9 @@ void initgame() {
 	figure.angle = 0;
 	mx1 = -3000; my1 = -3000; mx2 = 3000; my2 = 3000;
 	producemap();
-	realp = { 0,0 };
+	realp = { 0,0 }; realv = { 0,0 };
 	number_wood = 0, number_stone = 0;
-	velocity = 2.0; velocityenemy = 1.2; velocityenemy2 = 1.5; velocitybullet = 5; velocityreload = 50;
+	velocity = 2.5; velocityenemy = 1.2; velocityenemy2 = 1.5; velocitybullet = 5; velocityreload = 50;
 	mist = 0.0;
 	HP = 100.0;
 }
@@ -94,7 +94,7 @@ void loadgame()
 	scanf("%d%d%d%d", &mx1, &mx2, &my1, &my2);
 	cin >> figure.fc1 >> figure.fc2 >> figure.fc3;
 	int n, x; double a, b, c, d;
-	scanf("%d%lf%lf%d", &figure.r1, &realp.x, &realp.y, &n);
+	scanf("%d%lf%lf%lf%lf%d", &figure.r1, &realp.x, &realp.y, &realv.x, &realv.y, &n);
 	mp.clear(); mpenemy.clear();  mpenemy2.clear();  mpbullet.clear();
 	ref(i, 1, n)
 	{
@@ -130,7 +130,7 @@ void savegame()
 	printf("%d %d %d %d\n", mx1, mx2, my1, my2);
 	cout << figure.fc1 << " " << figure.fc2 << " " << figure.fc3 << endl;
 	printf("%d\n", figure.r1);
-	printf("%lf %lf\n", realp.x, realp.y);
+	printf("%lf %lf %lf %lf\n", realp.x, realp.y, realv.x, realv.y);
 	printf("%d\n", mp.size());
 	for (it_pvi it = mp.begin(); it != mp.end(); it++) 
 		printf("%lf %lf %d\n", (*it).first.x, (*it).first.y, (*it).second);
@@ -190,7 +190,7 @@ void paintgaining(it_pvi obj, double pct) {
 	if (name == IDTREE) {
 		setf(0x68B11F);
 		fpie(p.x - treedemo.r, p.y - treedemo.r, p.x + treedemo.r, p.y + treedemo.r,
-p.x + 1, p.y, p.x + cos(pct) * 100, p.y - sin(pct) * 100);
+			p.x + 1, p.y, p.x + cos(pct) * 100, p.y - sin(pct) * 100);
 	}
 	if (name == IDSTONE) {
 		setf(0x727272);
@@ -210,7 +210,8 @@ void paintmap() {
 			stonedemo.setposition(p.x, p.y);
 			if (obj == *gainobj) {
 				COLORREF c = stonedemo.fc; BYTE R = GetRValue(c), G = GetGValue(c), B = GetBValue(c);
-				COLORREF cc = RGB(R*(1 - gainpct), G*(1 - gainpct), B*(1 - gainpct));
+				double CG = 3.0 / 4 * (1.0 - gainpct);
+				COLORREF cc = RGB(R*CG, G*CG, B*CG);
 				stonedemo.fc = cc;
 				stonedemo.paint();
 				stonedemo.fc = c;
@@ -225,7 +226,8 @@ void paintmap() {
 			treedemo.setposition(p.x, p.y);
 			if (obj == *gainobj) {
 				COLORREF c = treedemo.fc; BYTE R = GetRValue(c), G = GetGValue(c), B = GetBValue(c);
-				COLORREF cc = RGB(R*(1 - gainpct / 2), G*(1 - gainpct / 2), B*(1 - gainpct / 2));
+				double CG = 3.0 / 4 * (1.0 - gainpct);
+				COLORREF cc = RGB(R*CG, G*CG, B*CG);
 				treedemo.fc = cc;
 				treedemo.paint();
 				treedemo.fc = c;
@@ -356,8 +358,8 @@ void gettouch() {
 	for (it_itpvi i = mpobj.begin(); i != mpobj.end(); i++) {
 		pair<vector2, int> obj = (**i); vector2 p = obj.first - realp; int name = obj.second;
 		double normp = norm(p);
-		if (name == IDSTONE && normp >= stonedemo.r + figuredemo.r1 - 1)continue;
-		if (name == IDTREE && normp >= treedemo.r + figuredemo.r1 - 1)continue;
+		if (name == IDSTONE && normp >= stonedemo.r + figuredemo.r1)continue;
+		if (name == IDTREE && normp >= treedemo.r + figuredemo.r1)continue;
 		mptch.push_back(*i);
 	}
 }
@@ -545,20 +547,26 @@ void _restart1(bool ifload = 0) {
 			while (GetAsyncKeyState(VK_ESCAPE))peekmsg(), delay(1);
 			continue;
 		}
-		vector2 v;
-		if (GetAsyncKeyState('W') & 0x8000)v.y -= 1;
-		if (GetAsyncKeyState('S') & 0x8000)v.y += 1;
-		if (GetAsyncKeyState('A') & 0x8000)v.x -= 1;
-		if (GetAsyncKeyState('D') & 0x8000)v.x += 1;
+		vector2 a;
+		if (GetAsyncKeyState('W') & 0x8000)a.y -= 0.23;
+		if (GetAsyncKeyState('S') & 0x8000)a.y += 0.23;
+		if (GetAsyncKeyState('A') & 0x8000)a.x -= 0.23;
+		if (GetAsyncKeyState('D') & 0x8000)a.x += 0.23;
+		if (a.x != 0 || a.y != 0)a = a * (1.0 / norm(a));
 		if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) {
 			savegame(); break;
 		}
-		if (v.x || v.y) v = v * (velocity / norm(v));
+		realv = realv + a;
+		double nv = norm(realv);
+		if (nv > velocity) realv = realv * (velocity / norm(realv)), nv = velocity;
+		if (nv < 0.1)realv = { 0,0 }, nv = 0; else {
+			realv = realv * ((nv - 0.2) / nv);
+		}
 
 		getsighted(); getsightedenemy(); getsightedenemy2();
 		gettouch(); gettouchenemy(); gettouchenemy2();
-		ref(times, 0, 1)adjust(v);
-		realp = realp + v;
+		ref(times, 0, 1)adjust(realv);
+		realp = realp + realv;
 		if (realp.x < mx1)realp.x = mx1;
 		if (realp.x > mx2)realp.x = mx2;
 		if (realp.y < my1)realp.y = my1;
@@ -574,11 +582,16 @@ void _restart1(bool ifload = 0) {
 			eraseallenemy2();
 			injuredtick = tick;
 		}
-		if (GetAsyncKeyState('Q') & 0x8000) {
+		bool isQ = (GetAsyncKeyState('Q') & 0x8000);
+		{
 			it_pvi id = null_itpvi;
 			for (it_itpvi i = mptch.begin(); i != mptch.end(); i++)
 				if ((**i) == (*gainobj)) { id = *i; break; }
-			if (*id != *null_itpvi) gainpct += 1.0 / 120; else {
+			if (*id != *null_itpvi) {
+				if(isQ) gainpct += 1.0 / 120;
+				else gainpct = 0;
+			}
+			else {
 				for (it_itpvi i = mptch.begin(); i != mptch.end(); i++) {
 					int name = (**i).second;
 					if (name == IDTREE || name == IDSTONE) { id = *i; break; }
@@ -586,6 +599,8 @@ void _restart1(bool ifload = 0) {
 				gainpct = 0;
 			}
 			gainobj = id;
+		}
+		if (isQ) {
 			if (gainpct >= 1.0) {
 				if ((*gainobj).second == IDTREE) number_wood++, Ntree--, mist += 200;
 				if ((*gainobj).second == IDSTONE) number_stone++, Nstone--, mist += 500;
@@ -593,7 +608,6 @@ void _restart1(bool ifload = 0) {
 				gainobj = null_itpvi; gainpct = 0;
 			}
 		}
-		else gainobj = null_itpvi, gainpct = 0;
 
 		t++;
 		clearscreen(GRAY200);
