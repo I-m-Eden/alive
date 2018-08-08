@@ -1,8 +1,6 @@
 #pragma once
+#include "head.h"
 #include "winpaint.h"
-#include <windows.h>
-#include <cmath>
-#include <iostream>
 using namespace std;
 const int IDTREE = 1;
 const int IDSTONE = 2;
@@ -181,9 +179,9 @@ private:
 public:
 	COLORREF fc1, fc2;
 	double angle;
-	double rw, rh;
+	double rw, rh, r;
 	enemyimage() {
-		rw = 42.0; rh = 65.0;
+		rw = 42.0; rh = 65.0; r = min(rw, rh);
 		ps1 = 0; pw1 = 0; pc1 = 0x788870;
 		fc1 = 0xA0B0A0;
 		ps2 = 0; pw2 = 0; pc2 = 0xB2EB79;
@@ -194,7 +192,7 @@ public:
 			s[i] = s[Sn - i], s[i].x = -s[i].x;
 	}
 	void setsize(double Sz) {
-		sz = Sz; rw = rw * sz; rh = rh * sz;
+		sz = Sz; rw = rw * sz; rh = rh * sz; r = r * sz;
 	}
 	void setposition(double X, double Y) {
 		x = X; y = Y;
@@ -258,9 +256,9 @@ private:
 public:
 	COLORREF fc1, fc2;
 	double angle;
-	double rw, rh;
+	double rw, rh, r;
 	enemy2image() {
-		rw = 30.0; rh = 35.0;
+		rw = 30.0; rh = 35.0; r = min(rw, rh);
 		ps1 = 0; pw1 = 0; pc1 = 0x788870;
 		fc1 = rgb(237, 220, 12);
 		ps2 = 0; pw2 = 0; pc2 = 0xB2EB79;
@@ -269,7 +267,7 @@ public:
 		x = y = 0;
 	}
 	void setsize(double Sz) {
-		sz = Sz; rw = rw * sz; rh = rh * sz;
+		sz = Sz; rw = rw * sz; rh = rh * sz; r = r * sz;
 	}
 	void setposition(double X, double Y) {
 		x = X; y = Y;

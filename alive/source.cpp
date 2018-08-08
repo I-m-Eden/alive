@@ -12,10 +12,8 @@
 //	_CRT_NONSTDC_NO_DEPRECATEaa
 //	项目属性->c/c++->代码生成->运行库 修改为 "多线程调试 (/MTd)"
 //
-#include <ctime>
-#include <algorithm>
-#include <utility>
-#include <afxwin.h>
+
+#include "head.h"
 #include "vector2.h"
 #include "datastruct.h"
 #include "resource.h"
@@ -60,6 +58,8 @@ double HP, FP;
 
 linkst<p_pvi> mpobj, mptch;
 p_pvi gainobj; double gainpct;
+kdtree<p_pvi> mpkd;
+map<p_pvi, pair<kdnode<p_pvi>*,p_ppvi> > kdpos;
 
 linkst<p_pvd> mpe1obj, mpe1tch, mpe2obj, mpe2tch;
 
@@ -161,7 +161,7 @@ bool sighted(vector2 p, int name) {
 }
 void producemap() {
 	mp.create(); mpenemy1.create(); mpenemy2.create(); mpbullet.create(); 
-	Ntree = 250; Nstone = 500; Nenemy = 25; Nenemy2 = 25;
+	Ntree = 250; Nstone = 500; Nenemy = 25; Nenemy2 = 10;
 	ref(i, 1, Ntree)mp.insert(make_pair(vector2(rand() % (mx2 - mx1) + mx1, rand() % (my2 - my1) + my1), IDTREE));
 	ref(i, 1, Nstone)mp.insert(make_pair(vector2(rand() % (mx2 - mx1) + mx1, rand() % (my2 - my1) + my1), IDSTONE));
 	ref(i, 1, Nenemy)mpenemy1.insert(make_pair(vector2(rand() % (mx2 - mx1) + mx1, rand() % (my2 - my1) + my1), 1.0*(rand() % 628) / 100));
@@ -175,7 +175,9 @@ vector2 randomposition(int name) {
 }
 void produceobj(int name) {
 	vector2 p = randomposition(name);
-	if (name == IDTREE || name == IDSTONE)mp.insert(make_pair(p, name));
+	if (name == IDTREE || name == IDSTONE) {
+		mpkd.insert(p, mp.insert(make_pair(p, name)));
+	}
 	if (name == IDENEMY)mpenemy1.insert(make_pair(p, 1.0*(rand() % 628) / 100));
 	if (name == IDENEMY2)mpenemy2.insert(make_pair(p, 1.0*(rand() % 628) / 100));
 	if (name == IDTREE)Ntree++;
@@ -282,48 +284,107 @@ void updatebullet() {
 		if ((b*B) < 1e-9)it=it->L,mpbullet.erase(it->R);
 	}
 }
+void adjust(vector2 rp, double range, vector2&v, linkst<p_pvi>* S) {
+	ref(times, 0, 1) {
+		double a0 = 1e9, a1 = 1e9;
+		double normv = norm(v);
+		for (p_ppvi i = S->begin(); !i->isend; i = i->R) {
+			pvi obj = (i->s)->s; vector2 p = obj.first - rp; int name = obj.second;
+			double normp = norm(p);
+			if (name == IDSTONE && normp<=range+stonedemo.r-1) {
+				if ((v*p) < 0)continue;
+				if ((v^p) >= 0) a0 = min(a0, acos((v*p) / normv / normp));
+				else a1 = min(a1, acos((v*p) / normv / normp));
+			}
+			if (name == IDTREE && normp<=range+treedemo.r-1) {
+				if ((v*p) < 0)continue;
+				if ((v^p) >= 0) a0 = min(a0, acos((v*p) / normv / normp));
+				else a1 = min(a1, acos((v*p) / normv / normp));
+			}
+		}
+		if (rp.x <= mx1 || rp.x >= mx2) {
+			vector2 p;
+			if (rp.x <= mx1) p = vector2(-1.0, 0.0); else p = vector2(1.0, 0.0);
+			if ((v*p) >= 0) {
+				if ((v^p) >= 0)a0 = min(a0, acos((v*p) / normv / 1.0));
+				else a1 = min(a1, acos((v*p) / normv / 1.0));
+			}
+		}
+		if (rp.y <= my1 || rp.y >= my2) {
+			vector2 p;
+			if (rp.y <= my1)p = vector2(0.0, -1.0); else p = vector2(0.0, 1.0);
+			if ((v*p) >= 0) {
+				if ((v^p) >= 0)a0 = min(a0, acos((v*p) / normv / 1.0));
+				else a1 = min(a1, acos((v*p) / normv / 1.0));
+			}
+		}
+		if (a0 > pi / 2 && a1 > pi / 2)return;
+		if (a0 <= pi / 2 && a1 <= pi / 2) {
+			v = vector2(0, 0); return;
+		}
+		if (a0 <= pi / 2) {
+			double a = atan2(v.y, v.x) - (pi / 2 - a0);
+			double nv = normv * cos(pi / 2 - a0);
+			v = vector2(nv*cos(a), nv*sin(a)); return;
+		}
+		if (a1 <= pi / 2) {
+			double a = atan2(v.y, v.x) + (pi / 2 - a1);
+			double nv = normv * cos(pi / 2 - a1);
+			v = vector2(nv*cos(a), nv*sin(a)); return;
+		}
+	}
+}
+pvd makeenemy2route(pvd s) {
+	linkst<p_pvi>* S = new linkst<p_pvi>; S->create();
+	mpkd.collectitem(S, s.first, enemy2demo.r + max(treedemo.r, stonedemo.r));
+
+	vector2 p = s.first - realp; double sa = s.second - pi / 2;
+	bool flag = 0;
+	if (norm(p) <= 300) {
+		double sb = atan2(-p.y, -p.x), sd = sb - sa;
+		while (sd < 0)sd += 2 * pi; while (sd > 2 * pi)sd -= 2 * pi;
+		if (rand() % 4 > 0 && sd > 0.1&&sd < 2 * pi - 0.1) { flag = 1; if (sd < pi)sa += 0.1; else sa -= 0.1; }
+		while (sa < 0)sa += 2 * pi; while (sa > 2 * pi)sa -= 2 * pi;
+	}
+	else {
+		if (rand() % 4 == 0)sa += 0.1; else if (rand() % 3 == 0)sa -= 0.1;
+		while (sa < 0)sa += 2 * pi; while (sa > 2 * pi)sa -= 2 * pi;
+	}
+	vector2 v = flag?vector2():vector2(cos(sa), sin(sa))*velocityenemy2;
+	p = p + realp; sa += pi / 2;
+	adjust(p, enemy2demo.r, v, S); 
+	p = p + v;
+
+	S->clear(); delete S;
+	return make_pair(p, sa);
+}
 void updateenemy() {
 	for (p_pvd i = mpenemy1.s->R; !i->isend; i=i->R) {
-
-		pair<vector2, double>obj = (*i).s; vector2 p = obj.first - realp; int name = IDENEMY; double sa = obj.second - pi / 2;
+		pvd obj = (*i).s; vector2 p = obj.first - realp; int name = IDENEMY; double sa = obj.second - pi / 2;
+		if (norm(p) <= 300) {
+			double sb = atan2(-p.y, -p.x), sd = sb - sa;
+			while (sd < 0)sd += 2 * pi; while (sd > 2 * pi)sd -= 2 * pi;
+			if (rand() % 4 > 0 && sd > 0.1&&sd < 2 * pi - 0.1) { if (sd < pi)sa += 0.1; else sa -= 0.1; }
+			while (sa < 0)sa += 2 * pi; while (sa > 2 * pi)sa -= 2 * pi;
+		}
+		else {
+			if (rand() % 4 == 0)sa += 0.1; else if (rand() % 3 == 0)sa -= 0.1;
+			while (sa < 0)sa += 2 * pi; while (sa > 2 * pi)sa -= 2 * pi;
+		}
 		p = p + vector2(cos(sa), sin(sa))*velocityenemy;
-		if (norm(p) <= 300) {
-			double sb = atan2(-p.y, -p.x), sd = sb - sa;
-			while (sd < 0)sd += 2 * pi; while (sd > 2 * pi)sd -= 2 * pi;
-			if (rand() % 4 > 0 && sd > 0.1&&sd < 2 * pi - 0.1) { if (sd < pi)sa += 0.1; else sa -= 0.1; }
-			while (sa < 0)sa += 2 * pi; while (sa > 2 * pi)sa -= 2 * pi;
-		}
-		else {
-			if (rand() % 4 == 0)sa += 0.1; else if (rand() % 3 == 0)sa -= 0.1;
-			while (sa < 0)sa += 2 * pi; while (sa > 2 * pi)sa -= 2 * pi;
-		}
+		p = p + realp;
 		if (p.x < mx1)p.x = mx1; if (p.x > mx2)p.x = mx2;
 		if (p.y < my1)p.y = my1; if (p.y > my2)p.y = my2;
-		(*i).s = make_pair(p + realp, sa + pi / 2);
+		(*i).s = make_pair(p, sa + pi / 2);
 	}
-	for (p_pvd i = mpenemy2.begin(); !i->isend; i=i->R) {
-		pair<vector2, double>obj = (*i).s; vector2 p = obj.first - realp; int name = IDENEMY2; double sa = obj.second - pi / 2;
-		p = p + vector2(cos(sa), sin(sa))*velocityenemy2;
-		if (norm(p) <= 300) {
-			double sb = atan2(-p.y, -p.x), sd = sb - sa;
-			while (sd < 0)sd += 2 * pi; while (sd > 2 * pi)sd -= 2 * pi;
-			if (rand() % 4 > 0 && sd > 0.1&&sd < 2 * pi - 0.1) { if (sd < pi)sa += 0.1; else sa -= 0.1; }
-			while (sa < 0)sa += 2 * pi; while (sa > 2 * pi)sa -= 2 * pi;
-		}
-		else {
-			if (rand() % 4 == 0)sa += 0.1; else if (rand() % 3 == 0)sa -= 0.1;
-			while (sa < 0)sa += 2 * pi; while (sa > 2 * pi)sa -= 2 * pi;
-		}
-		if (p.x < mx1)p.x = mx1; if (p.x > mx2)p.x = mx2;
-		if (p.y < my1)p.y = my1; if (p.y > my2)p.y = my2;
-		(*i).s = make_pair(p + realp, sa + pi / 2);
-	}
+	for (p_pvd i = mpenemy2.begin(); !i->isend; i=i->R)
+		i->s = makeenemy2route(i->s);
 }
 void updatekilled() {
 	for (p_pvv it1 = mpbullet.begin(); !it1->isend; it1=it1->R)
 		for (p_pvd it2 = mpenemy1.begin(); !it2->isend; it2 = it2->R) {
 			pvv t1 = (*it1).s; pvd t2 = (*it2).s;
-			if (norm(t1.first - t2.first) <= min(enemydemo.rh, enemydemo.rw) + bulletdemo.r) {
+			if (norm(t1.first - t2.first) <= enemydemo.r + bulletdemo.r) {
 				it1 = it1->L; mpbullet.erase(it1->R); mpenemy1.erase(it2);
 				Nenemy--; break;
 			}
@@ -331,7 +392,7 @@ void updatekilled() {
 	for (p_pvv it1 = mpbullet.begin(); !it1->isend; it1 = it1->R)
 		for (p_pvd it2 = mpenemy2.begin(); !it2->isend; it2 = it2->R) {
 			pvv t1 = (*it1).s; pvd t2 = (*it2).s;
-			if (norm(t1.first - t2.first) <= min(enemydemo.rh, enemydemo.rw) + bulletdemo.r) {
+			if (norm(t1.first - t2.first) <= enemy2demo.r + bulletdemo.r) {
 				it1 = it1->L; mpbullet.erase(it1->R); mpenemy2.erase(it2);
 				Nenemy--; break;
 			}
@@ -390,20 +451,24 @@ void gettouchenemy() {
 	for (p_pvd i = mpenemy1.begin(); !i->isend; i=i->R) {
 		pvd obj = i->s; vector2 p = obj.first - realp; int name = obj.second;
 		double normp = norm(p);
-		if (normp >= min(enemydemo.rw, enemydemo.rh) + figuredemo.r1 - 1)continue;
+		if (normp >= enemydemo.r + figuredemo.r1 - 1)continue;
 		mpe1tch.insert(i);
 	}
 	mpe2tch.create();
 	for (p_pvd i = mpenemy2.begin(); !i->isend; i = i->R) {
 		pvd obj = i->s; vector2 p = obj.first - realp; int name = obj.second;
 		double normp = norm(p);
-		if (normp >= min(enemy2demo.rw, enemy2demo.rh) + figuredemo.r1 - 1)continue;
+		if (normp >= enemy2demo.r + figuredemo.r1 - 1)continue;
 		mpe2tch.insert(i);
 	}
 }
 void eraseall(p_pvi it) {
 	if ((*it).s.second == IDTREE)Ntree--;
 	if ((*it).s.second == IDSTONE)Nstone--;
+	if ((*it).s.second == IDTREE || (*it).s.second == IDSTONE) {
+		pair<kdnode<p_pvi>*, p_ppvi> &s = kdpos[it];
+		s.first->s.erase(s.second); kdpos.erase(it);
+	}
 	mp.erase(it);
 }
 void eraseallenemy() {
@@ -458,101 +523,12 @@ void updateeatfruit() {
 		}
 	}
 }
-void adjust(vector2&v) {
-	double a0 = 1e9, a1 = 1e9;
-	double normv = norm(v);
-	for (p_ppvi i = mptch.begin(); !i->isend; i=i->R) {
-		pvi obj = (i->s)->s; vector2 p = obj.first - realp; int name = obj.second;
-		double normp = norm(p);
-		if (name == IDSTONE) {
-			if ((v*p) < 0)continue;
-			if ((v^p) >= 0) a0 = min(a0, acos((v*p) / normv / normp));
-			else a1 = min(a1, acos((v*p) / normv / normp));
-		}
-		if (name == IDTREE) {
-			if ((v*p) < 0)continue;
-			if ((v^p) >= 0) a0 = min(a0, acos((v*p) / normv / normp));
-			else a1 = min(a1, acos((v*p) / normv / normp));
-		}
-	}
-	if (realp.x <= mx1 || realp.x >= mx2) {
-		vector2 p; 
-		if (realp.x <= mx1) p = vector2(-1.0, 0.0); else p = vector2(1.0, 0.0);
-		if ((v*p) >= 0) {
-			if ((v^p) >= 0)a0 = min(a0, acos((v*p) / normv / 1.0));
-			else a1 = min(a1, acos((v*p) / normv / 1.0));
-		}
-	}
-	if (realp.y <= my1 || realp.y >= my2) {
-		vector2 p;
-		if (realp.y <= my1)p = vector2(0.0, -1.0); else p = vector2(0.0, 1.0);
-		if ((v*p) >= 0) {
-			if ((v^p) >= 0)a0 = min(a0, acos((v*p) / normv / 1.0));
-			else a1 = min(a1, acos((v*p) / normv / 1.0));
-		}
-	}
-	if (a0 > pi / 2 && a1 > pi / 2)return;
-	if (a0 <= pi / 2 && a1 <= pi / 2) {
-		v = vector2(0, 0); return;
-	}
-	if (a0 <= pi / 2) {
-		double a = atan2(v.y, v.x) - (pi / 2 - a0);
-		double nv = normv * cos(pi / 2 - a0);
-		v = vector2(nv*cos(a), nv*sin(a)); return;
-	}
-	if (a1 <= pi / 2) {
-		double a = atan2(v.y, v.x) + (pi / 2 - a1);
-		double nv = normv * cos(pi / 2 - a1);
-		v = vector2(nv*cos(a), nv*sin(a)); return;
-	}
-}
-BYTE*rcData;
-tagRGBTRIPLE arrbitmap[800][600]; bool flagarr;
-int Sr[800][600],Sg[800][600],Sb[800][600];
-
-string UseCustomResource(int rcId) {
-	HRSRC hRsrc = FindResource(_hinst, MAKEINTRESOURCE(rcId), RT_BITMAP);
-	if (NULL == hRsrc) return "rcError1";
-	DWORD dwSize = SizeofResource(_hinst, hRsrc);
-	if (0 == dwSize) return "rcError2";
-	HGLOBAL hGlobal = LoadResource(_hinst, hRsrc);
-	if (NULL == hGlobal) return "rcError3";
-	rcData = new BYTE[dwSize];
-	ZeroMemory(rcData, sizeof(BYTE)*dwSize);
-	CopyMemory(rcData, (PBYTE)LockResource(hGlobal), dwSize);
-	return "";
-}
-void initrcData() {
-	if (flagarr)return; flagarr = 1;
-	string fileinfo = UseCustomResource(IDB_BITMAP1);
-	int w = 800, h = 600;
-	int cnt = 54;
-	def(j, h - 1, 0) {
-		ref(i, 0, w - 1) {
-			BYTE r = rcData[cnt++], b = rcData[cnt++], g = rcData[cnt++];
-			arrbitmap[i][j] = { b,g,r };
-		}
-		ref(i, 1, (4 - w * 3 % 4) % 4)cnt++;
-	}
-	delete[] rcData;
-	Sr[0][0] = arrbitmap[0][0].rgbtRed;
-	Sg[0][0] = arrbitmap[0][0].rgbtGreen;
-	Sb[0][0] = arrbitmap[0][0].rgbtBlue;
-	for (int i = 1; i < 800; i++) Sr[i][0] = Sr[i - 1][0] + arrbitmap[i][0].rgbtRed;
-	for (int i = 1; i < 800; i++) Sg[i][0] = Sg[i - 1][0] + arrbitmap[i][0].rgbtGreen;
-	for (int i = 1; i < 800; i++) Sb[i][0] = Sb[i - 1][0] + arrbitmap[i][0].rgbtBlue;
-	for (int i = 1; i < 600; i++) Sr[0][i] = Sr[0][i - 1] + arrbitmap[0][i].rgbtRed;
-	for (int i = 1; i < 600; i++) Sg[0][i] = Sg[0][i - 1] + arrbitmap[0][i].rgbtGreen;
-	for (int i = 1; i < 600; i++) Sb[0][i] = Sb[0][i - 1] + arrbitmap[0][i].rgbtBlue;
-	for (int i = 1; i < 800; i++)
-		for (int j = 1; j < 600; j++)
-			Sr[i][j] = Sr[i - 1][j] + Sr[i][j - 1] - Sr[i - 1][j - 1] + arrbitmap[i][j].rgbtRed;
-	for (int i = 1; i < 800; i++)
-		for (int j = 1; j < 600; j++)
-			Sg[i][j] = Sg[i - 1][j] + Sg[i][j - 1] - Sg[i - 1][j - 1] + arrbitmap[i][j].rgbtGreen;
-	for (int i = 1; i < 800; i++)
-		for (int j = 1; j < 600; j++)
-			Sb[i][j] = Sb[i - 1][j] + Sb[i][j - 1] - Sb[i - 1][j - 1] + arrbitmap[i][j].rgbtBlue;
+void initkdtree() {
+	kdpos.clear();
+	mpkd.create(mx1, my1, mx2, my2, 0.01, 0.01);
+	for (p_pvi it = mp.begin(); !it->isend; it = it->R)
+		if (it->s.second == IDTREE || it->s.second == IDSTONE)
+			kdpos[it]=mpkd.insert(it->s.first, it);
 }
 
 void _restart1(bool ifload = 0) {
@@ -588,10 +564,12 @@ void _restart1(bool ifload = 0) {
 	if (ifload)loadgame();else initgame();
 
 	//额外变量初始化
-	gainobj = nullptr; gainpct = 0;
-	
+
 	//计时器变量
 	int tick = 0, injuredtick = -1e9, shoottick = -1e9; int t = 0, rest = 0; DWORD last = GetTickCount();
+
+	gainobj = nullptr; gainpct = 0;
+	initkdtree();
 
 	while (!_isquit) {
 
@@ -623,8 +601,8 @@ void _restart1(bool ifload = 0) {
 		if (tick % 50 == 0) {
 			if (rand() % 50 == 0)produceobj(IDTREE);
 			if (rand() % 30 == 0)produceobj(IDSTONE);
-			if (rand() % 10 == 0)produceobj(IDENEMY);
-			if (rand() % 10 == 0)produceobj(IDENEMY2);
+			if (rand() % 12 == 0)produceobj(IDENEMY);
+			if (rand() % 8 == 0)produceobj(IDENEMY2);
 		}
 		
 		//处理地图信息
@@ -663,7 +641,7 @@ void _restart1(bool ifload = 0) {
 		double nv = norm(realv);
 		if (nv > velocity) realv = realv * (velocity / norm(realv)), nv = velocity;
 		if (nv < 0.1)realv = { 0,0 }, nv = 0; else realv = realv * ((nv - 0.2) / nv);
-		ref(times, 0, 1)adjust(realv);
+		adjust(realp, figuredemo.r1, realv, &mptch);
 		if (mptch.sz) realv = realv * 0.8;
 		realp = realp + realv;
 
@@ -714,7 +692,61 @@ void _restart1(bool ifload = 0) {
 		//消息循环
 		peekmsg(); delay(1);
 	}
+	mpkd.clear(); kdpos.clear();
+	mp.clear(); mpobj.clear(); mptch.clear();
+	mpenemy1.clear(); mpe1obj.clear(); mpe1tch.clear();
+	mpenemy2.clear(); mpe2obj.clear(); mpe2tch.clear();
+	mpbullet.clear();
 }
+
+BYTE*rcData;
+tagRGBTRIPLE arrbitmap[800][600]; bool flagarr;
+int Sr[800][600], Sg[800][600], Sb[800][600];
+string UseCustomResource(int rcId) {
+	HRSRC hRsrc = FindResource(_hinst, MAKEINTRESOURCE(rcId), RT_BITMAP);
+	if (NULL == hRsrc) return "rcError1";
+	DWORD dwSize = SizeofResource(_hinst, hRsrc);
+	if (0 == dwSize) return "rcError2";
+	HGLOBAL hGlobal = LoadResource(_hinst, hRsrc);
+	if (NULL == hGlobal) return "rcError3";
+	rcData = new BYTE[dwSize];
+	ZeroMemory(rcData, sizeof(BYTE)*dwSize);
+	CopyMemory(rcData, (PBYTE)LockResource(hGlobal), dwSize);
+	return "";
+}
+void initrcData() {
+	if (flagarr)return; flagarr = 1;
+	string fileinfo = UseCustomResource(IDB_BITMAP1);
+	int w = 800, h = 600;
+	int cnt = 54;
+	def(j, h - 1, 0) {
+		ref(i, 0, w - 1) {
+			BYTE r = rcData[cnt++], b = rcData[cnt++], g = rcData[cnt++];
+			arrbitmap[i][j] = { b,g,r };
+		}
+		ref(i, 1, (4 - w * 3 % 4) % 4)cnt++;
+	}
+	delete[] rcData;
+	Sr[0][0] = arrbitmap[0][0].rgbtRed;
+	Sg[0][0] = arrbitmap[0][0].rgbtGreen;
+	Sb[0][0] = arrbitmap[0][0].rgbtBlue;
+	for (int i = 1; i < 800; i++) Sr[i][0] = Sr[i - 1][0] + arrbitmap[i][0].rgbtRed;
+	for (int i = 1; i < 800; i++) Sg[i][0] = Sg[i - 1][0] + arrbitmap[i][0].rgbtGreen;
+	for (int i = 1; i < 800; i++) Sb[i][0] = Sb[i - 1][0] + arrbitmap[i][0].rgbtBlue;
+	for (int i = 1; i < 600; i++) Sr[0][i] = Sr[0][i - 1] + arrbitmap[0][i].rgbtRed;
+	for (int i = 1; i < 600; i++) Sg[0][i] = Sg[0][i - 1] + arrbitmap[0][i].rgbtGreen;
+	for (int i = 1; i < 600; i++) Sb[0][i] = Sb[0][i - 1] + arrbitmap[0][i].rgbtBlue;
+	for (int i = 1; i < 800; i++)
+		for (int j = 1; j < 600; j++)
+			Sr[i][j] = Sr[i - 1][j] + Sr[i][j - 1] - Sr[i - 1][j - 1] + arrbitmap[i][j].rgbtRed;
+	for (int i = 1; i < 800; i++)
+		for (int j = 1; j < 600; j++)
+			Sg[i][j] = Sg[i - 1][j] + Sg[i][j - 1] - Sg[i - 1][j - 1] + arrbitmap[i][j].rgbtGreen;
+	for (int i = 1; i < 800; i++)
+		for (int j = 1; j < 600; j++)
+			Sb[i][j] = Sb[i - 1][j] + Sb[i][j - 1] - Sb[i - 1][j - 1] + arrbitmap[i][j].rgbtBlue;
+}
+
 void paintbmp(int x, int y, int X, int Y) {
 	if (!flagarr) initrcData();
 	beginPdot();
@@ -963,6 +995,7 @@ position1:
 		delay(1), peekmsg();
 	}
 }
+
 int WINAPI WinMain(
 	HINSTANCE hInstance,
 	HINSTANCE hPrevinstance,
