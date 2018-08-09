@@ -126,6 +126,7 @@
     <ClInclude Include="head.h" />
     <ClInclude Include="imageresource.h" />
     <ClInclude Include="coloresource.h" />
+    <ClInclude Include="processresource.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="toolibrary.h" />
     <ClInclude Include="vector2.h" />
@@ -136,6 +137,9 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="back.bmp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="shop.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
