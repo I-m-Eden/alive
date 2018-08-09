@@ -71,6 +71,9 @@ map<p_pvi, pair<kdnode<p_pvi>*,p_ppvi> > kdpos;
 
 linkst<p_pvd> mpe1obj, mpe1tch, mpe2obj, mpe2tch, mpe3obj, mpe3tch;
 
+void initgame();
+void loadgame();
+void savegame();
 bool sighted(vector2 p, int name);
 void producemap();
 vector2 randomposition(int name);
