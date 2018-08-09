@@ -115,7 +115,7 @@ void initgame() {
 	producemap();
 	realp = { 0,0 }; realv = { 0,0 };
 	number_wood = 0, number_stone = 0;
-	velocity = 2.5; velocityenemy = 1.2; velocityenemy2 = 1.5; velocitybullet = 5; velocityreload = 50;
+	velocity = 2.5; velocityenemy = 2.0; velocityenemy2 = 2.7; velocitybullet = 5; velocityreload = 50;
 	mist = 0.0;
 	HP = 100.0; FP = 100.0;
 }
