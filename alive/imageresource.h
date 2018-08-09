@@ -1,11 +1,10 @@
 #pragma once
+#include "head.h"
 #include "winpaint.h"
-#include <windows.h>
-#include <cmath>
-#include <iostream>
 using namespace std;
 const int IDTREE = 1;
 const int IDSTONE = 2;
+const int IDFRUIT = 5;
 const int IDENEMY = 3;
 const int IDENEMY2 = 4;
 class figureimage {
@@ -96,6 +95,31 @@ public:
 		pcircle(x, y, r);
 	}
 }stonedemo;
+class fruitimage {
+private:
+	int ps, pw; COLORREF pc, spc;
+	double x, y;
+public:
+	COLORREF fc, sfc;
+	int r, sr;
+	fruitimage() {
+		ps = 0; pw = 0; pc = RGB(250, 210, 70); spc = RGB(250, 250, 100);
+		fc = RGB(200, 160, 20); sfc = RGB(200, 230, 50);
+		r = 12; sr = 6;
+		x = y = 0;
+	}
+	void setposition(double X, double Y) {
+		x = X; y = Y;
+	}
+	void paint() {
+		setd(ps, pw, pc);
+		setf(fc);
+		pcircle(x, y, r);
+		setd(ps, pw, spc);
+		setf(sfc);
+		pcircle(x, y, sr);
+	}
+}fruitdemo;
 class enemyimage {
 private:
 	POINT S[50];
@@ -155,9 +179,9 @@ private:
 public:
 	COLORREF fc1, fc2;
 	double angle;
-	double rw, rh;
+	double rw, rh, r;
 	enemyimage() {
-		rw = 42.0; rh = 65.0;
+		rw = 42.0; rh = 65.0; r = min(rw, rh);
 		ps1 = 0; pw1 = 0; pc1 = 0x788870;
 		fc1 = 0xA0B0A0;
 		ps2 = 0; pw2 = 0; pc2 = 0xB2EB79;
@@ -168,7 +192,7 @@ public:
 			s[i] = s[Sn - i], s[i].x = -s[i].x;
 	}
 	void setsize(double Sz) {
-		sz = Sz; rw = rw * sz; rh = rh * sz;
+		sz = Sz; rw = rw * sz; rh = rh * sz; r = r * sz;
 	}
 	void setposition(double X, double Y) {
 		x = X; y = Y;
@@ -232,9 +256,9 @@ private:
 public:
 	COLORREF fc1, fc2;
 	double angle;
-	double rw, rh;
+	double rw, rh, r;
 	enemy2image() {
-		rw = 30.0; rh = 35.0;
+		rw = 30.0; rh = 35.0; r = min(rw, rh);
 		ps1 = 0; pw1 = 0; pc1 = 0x788870;
 		fc1 = rgb(237, 220, 12);
 		ps2 = 0; pw2 = 0; pc2 = 0xB2EB79;
@@ -243,7 +267,7 @@ public:
 		x = y = 0;
 	}
 	void setsize(double Sz) {
-		sz = Sz; rw = rw * sz; rh = rh * sz;
+		sz = Sz; rw = rw * sz; rh = rh * sz; r = r * sz;
 	}
 	void setposition(double X, double Y) {
 		x = X; y = Y;

@@ -1,5 +1,8 @@
 #pragma once
-#include <cmath>
+#ifndef H_VECTOR2
+#define H_VECTOR2
+
+#include "head.h"
 struct vector2 {
 	double x, y;
 	vector2() { x = 0; y = 0; }
@@ -26,3 +29,4 @@ double operator^(vector2 a, vector2 b) {
 bool operator ==(vector2 a, vector2 b) {
 	return a.x == b.x&&a.y == b.y;
 }
+#endif

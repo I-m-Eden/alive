@@ -12,11 +12,10 @@
 //	_CRT_NONSTDC_NO_DEPRECATEaa
 //	项目属性->c/c++->代码生成->运行库 修改为 "多线程调试 (/MTd)"
 //
-#include <ctime>
-#include <algorithm>
-#include <utility>
-#include <afxwin.h>
+
+#include "head.h"
 #include "vector2.h"
+#include "datastruct.h"
 #include "resource.h"
 #include "winpaint.h"
 #include "toolibrary.h"
@@ -35,38 +34,6 @@ string constr(int s) {
 }
 void flushmouse() { while (GetAsyncKeyState(VK_LBUTTON)&0x8000)delay(1); while (peekmsg())delay(1); }
 void flushkey() { FlushConsoleInputBuffer(GetStdHandle(STD_INPUT_HANDLE)); }
-
-template <class T> class lst {
-public:
-	lst<T> *L, *R; T s; bool isbegin, isend;
-	lst<T>() { isbegin = 0; isend = 0; L = R = nullptr; }
-};
-template <class T> class linkst {
-public:
-	int sz;
-	lst<T>* s;
-	linkst<T>() { s = nullptr; sz = 0; }
-	void create() { 
-		while (s != nullptr) {
-			lst<T>* t = s->R; delete s;
-			s = t;
-		}
-		s = new lst<T>; s->isbegin = 1;
-		s->R = new lst<T>; s->R->isend = 1;
-		sz = 0;
-	}
-	void insert(T t) {
-		lst<T> *q = new lst<T>; q->s = t;
-		q->R = s->R; q->L = s; 
-		s->R->L = q; s->R = q; sz++;
-	}
-	void erase(lst<T>* S) {
-		S->L->R = S->R;
-		S->R->L = S->L; sz--;
-		delete S;
-	}
-	lst<T>* begin() { return s->R; }
-};
 
 typedef pair<vector2, int> pvi; 
 typedef pair<vector2, double> pvd;
@@ -89,10 +56,17 @@ double velocity, velocityenemy, velocityenemy2, velocitybullet, velocityreload;
 double mist; int Ntree, Nstone, Nenemy, Nenemy2;
 double HP, FP;
 
-linkst<p_pvi>mpobj, mptch;
+linkst<p_pvi> mpobj, mptch;
 p_pvi gainobj; double gainpct;
+kdtree<p_pvi> mpkd;
+map<p_pvi, pair<kdnode<p_pvi>*,p_ppvi> > kdpos;
 
-linkst<p_pvd>mpe1obj, mpe1tch, mpe2obj, mpe2tch;
+linkst<p_pvd> mpe1obj, mpe1tch, mpe2obj, mpe2tch;
+
+void getsighted();
+void getsightedenemy();
+void clearsighted();
+void producemap();
 
 void _shop() {
 	flushmouse();
@@ -107,7 +81,6 @@ void _shop() {
 	}
 }
 
-void producemap();
 void initgame() {
 	figure.setposition(_winw / 2, _winh / 2);
 	figure.angle = 0;
@@ -115,7 +88,7 @@ void initgame() {
 	producemap();
 	realp = { 0,0 }; realv = { 0,0 };
 	number_wood = 0, number_stone = 0;
-	velocity = 2.5; velocityenemy = 2.0; velocityenemy2 = 2.7; velocitybullet = 5; velocityreload = 50;
+	velocity = 2.5; velocityenemy = 1.2; velocityenemy2 = 2.7; velocitybullet = 5; velocityreload = 50;
 	mist = 0.0;
 	HP = 100.0; FP = 100.0;
 }
@@ -182,12 +155,13 @@ void savegame()
 bool sighted(vector2 p, int name) {
 	if (name == IDTREE) return (p.x >= -treedemo.r&&p.x <= _winw + treedemo.r&&p.y >= -treedemo.r&&p.y <= _winh + treedemo.r);
 	if (name == IDSTONE) return (p.x >= -stonedemo.r&&p.x <= _winw + stonedemo.r&&p.y >= -stonedemo.r&&p.y <= _winh + stonedemo.r);
+	if (name == IDFRUIT) return (p.x >= -fruitdemo.r&&p.x <= _winw + fruitdemo.r&&p.y >= -fruitdemo.r&&p.y <= _winh + fruitdemo.r);
 	if (name == IDENEMY) return (p.x >= -enemydemo.rw&&p.x <= _winw + enemydemo.rw&&p.y >= -enemydemo.rh&&p.y <= _winh + enemydemo.rh);
 	if (name == IDENEMY2) return (p.x >= -enemy2demo.rw&&p.x <= _winw + enemy2demo.rw&&p.y >= -enemy2demo.rh&&p.y <= _winh + enemy2demo.rh);
 }
 void producemap() {
 	mp.create(); mpenemy1.create(); mpenemy2.create(); mpbullet.create(); 
-	Ntree = 250; Nstone = 500; Nenemy = 25; Nenemy2 = 25;
+	Ntree = 250; Nstone = 500; Nenemy = 25; Nenemy2 = 10;
 	ref(i, 1, Ntree)mp.insert(make_pair(vector2(rand() % (mx2 - mx1) + mx1, rand() % (my2 - my1) + my1), IDTREE));
 	ref(i, 1, Nstone)mp.insert(make_pair(vector2(rand() % (mx2 - mx1) + mx1, rand() % (my2 - my1) + my1), IDSTONE));
 	ref(i, 1, Nenemy)mpenemy1.insert(make_pair(vector2(rand() % (mx2 - mx1) + mx1, rand() % (my2 - my1) + my1), 1.0*(rand() % 628) / 100));
@@ -201,7 +175,9 @@ vector2 randomposition(int name) {
 }
 void produceobj(int name) {
 	vector2 p = randomposition(name);
-	if (name == IDTREE || name == IDSTONE)mp.insert(make_pair(p, name));
+	if (name == IDTREE || name == IDSTONE) {
+		mpkd.insert(p, mp.insert(make_pair(p, name)));
+	}
 	if (name == IDENEMY)mpenemy1.insert(make_pair(p, 1.0*(rand() % 628) / 100));
 	if (name == IDENEMY2)mpenemy2.insert(make_pair(p, 1.0*(rand() % 628) / 100));
 	if (name == IDTREE)Ntree++;
@@ -226,6 +202,7 @@ void paintgaining(p_pvi obj, double pct) {
 }
 void paintmap() {
 	setd(0, 0, GRAY170);
+	getsighted(); getsightedenemy();
 	for (int i = 0, X = (20 - int(realp.x) % 20); i < 40; ++i, X += 20)
 		pline(X, 0, X, _winh);
 	for (int i = 0, Y = (20 - int(realp.y) % 20); i < 30; ++i, Y += 20)
@@ -260,6 +237,13 @@ void paintmap() {
 				paintgaining(gainobj, gainpct);
 			}
 			else treedemo.paint();
+		}
+	}
+	for (p_ppvi i = mpobj.s->R; !i->isend; i = i->R) {
+		pvi obj = (i->s)->s; vector2 p = obj.first - realp + vector2(_winw / 2, _winh / 2); int name = obj.second;
+		if (name == IDFRUIT) {
+			fruitdemo.setposition(p.x, p.y);
+			fruitdemo.paint();
 		}
 	}
 	for (p_ppvd i = mpe1obj.s->R; !i->isend; i=i->R) {
@@ -300,49 +284,107 @@ void updatebullet() {
 		if ((b*B) < 1e-9)it=it->L,mpbullet.erase(it->R);
 	}
 }
-bool cmp_mp(pair<vector2, int> x, pair<vector2, int> y) { return x.first.x < y.first.x; }
+void adjust(vector2 rp, double range, vector2&v, linkst<p_pvi>* S) {
+	ref(times, 0, 1) {
+		double a0 = 1e9, a1 = 1e9;
+		double normv = norm(v);
+		for (p_ppvi i = S->begin(); !i->isend; i = i->R) {
+			pvi obj = (i->s)->s; vector2 p = obj.first - rp; int name = obj.second;
+			double normp = norm(p);
+			if (name == IDSTONE && normp<=range+stonedemo.r-1) {
+				if ((v*p) < 0)continue;
+				if ((v^p) >= 0) a0 = min(a0, acos((v*p) / normv / normp));
+				else a1 = min(a1, acos((v*p) / normv / normp));
+			}
+			if (name == IDTREE && normp<=range+treedemo.r-1) {
+				if ((v*p) < 0)continue;
+				if ((v^p) >= 0) a0 = min(a0, acos((v*p) / normv / normp));
+				else a1 = min(a1, acos((v*p) / normv / normp));
+			}
+		}
+		if (rp.x <= mx1 || rp.x >= mx2) {
+			vector2 p;
+			if (rp.x <= mx1) p = vector2(-1.0, 0.0); else p = vector2(1.0, 0.0);
+			if ((v*p) >= 0) {
+				if ((v^p) >= 0)a0 = min(a0, acos((v*p) / normv / 1.0));
+				else a1 = min(a1, acos((v*p) / normv / 1.0));
+			}
+		}
+		if (rp.y <= my1 || rp.y >= my2) {
+			vector2 p;
+			if (rp.y <= my1)p = vector2(0.0, -1.0); else p = vector2(0.0, 1.0);
+			if ((v*p) >= 0) {
+				if ((v^p) >= 0)a0 = min(a0, acos((v*p) / normv / 1.0));
+				else a1 = min(a1, acos((v*p) / normv / 1.0));
+			}
+		}
+		if (a0 > pi / 2 && a1 > pi / 2)return;
+		if (a0 <= pi / 2 && a1 <= pi / 2) {
+			v = vector2(0, 0); return;
+		}
+		if (a0 <= pi / 2) {
+			double a = atan2(v.y, v.x) - (pi / 2 - a0);
+			double nv = normv * cos(pi / 2 - a0);
+			v = vector2(nv*cos(a), nv*sin(a)); return;
+		}
+		if (a1 <= pi / 2) {
+			double a = atan2(v.y, v.x) + (pi / 2 - a1);
+			double nv = normv * cos(pi / 2 - a1);
+			v = vector2(nv*cos(a), nv*sin(a)); return;
+		}
+	}
+}
+pvd makeenemy2route(pvd s) {
+	linkst<p_pvi>* S = new linkst<p_pvi>; S->create();
+	mpkd.collectitem(S, s.first, enemy2demo.r + max(treedemo.r, stonedemo.r));
+
+	vector2 p = s.first - realp; double sa = s.second - pi / 2;
+	bool flag = 0;
+	if (norm(p) <= 300) {
+		double sb = atan2(-p.y, -p.x), sd = sb - sa;
+		while (sd < 0)sd += 2 * pi; while (sd > 2 * pi)sd -= 2 * pi;
+		if (rand() % 4 > 0 && sd > 0.1&&sd < 2 * pi - 0.1) { flag = 1; if (sd < pi)sa += 0.1; else sa -= 0.1; }
+		while (sa < 0)sa += 2 * pi; while (sa > 2 * pi)sa -= 2 * pi;
+	}
+	else {
+		if (rand() % 4 == 0)sa += 0.1; else if (rand() % 3 == 0)sa -= 0.1;
+		while (sa < 0)sa += 2 * pi; while (sa > 2 * pi)sa -= 2 * pi;
+	}
+	vector2 v = flag?vector2():vector2(cos(sa), sin(sa))*velocityenemy2;
+	p = p + realp; sa += pi / 2;
+	adjust(p, enemy2demo.r, v, S); 
+	p = p + v;
+
+	S->clear(); delete S;
+	return make_pair(p, sa);
+}
 void updateenemy() {
 	for (p_pvd i = mpenemy1.s->R; !i->isend; i=i->R) {
-
-		pair<vector2, double>obj = (*i).s; vector2 p = obj.first - realp; int name = IDENEMY; double sa = obj.second - pi / 2;
+		pvd obj = (*i).s; vector2 p = obj.first - realp; int name = IDENEMY; double sa = obj.second - pi / 2;
+		if (norm(p) <= 300) {
+			double sb = atan2(-p.y, -p.x), sd = sb - sa;
+			while (sd < 0)sd += 2 * pi; while (sd > 2 * pi)sd -= 2 * pi;
+			if (rand() % 4 > 0 && sd > 0.1&&sd < 2 * pi - 0.1) { if (sd < pi)sa += 0.1; else sa -= 0.1; }
+			while (sa < 0)sa += 2 * pi; while (sa > 2 * pi)sa -= 2 * pi;
+		}
+		else {
+			if (rand() % 4 == 0)sa += 0.1; else if (rand() % 3 == 0)sa -= 0.1;
+			while (sa < 0)sa += 2 * pi; while (sa > 2 * pi)sa -= 2 * pi;
+		}
 		p = p + vector2(cos(sa), sin(sa))*velocityenemy;
-		if (norm(p) <= 300) {
-			double sb = atan2(-p.y, -p.x), sd = sb - sa;
-			while (sd < 0)sd += 2 * pi; while (sd > 2 * pi)sd -= 2 * pi;
-			if (rand() % 4 > 0 && sd > 0.1&&sd < 2 * pi - 0.1) { if (sd < pi)sa += 0.1; else sa -= 0.1; }
-			while (sa < 0)sa += 2 * pi; while (sa > 2 * pi)sa -= 2 * pi;
-		}
-		else {
-			if (rand() % 4 == 0)sa += 0.1; else if (rand() % 3 == 0)sa -= 0.1;
-			while (sa < 0)sa += 2 * pi; while (sa > 2 * pi)sa -= 2 * pi;
-		}
+		p = p + realp;
 		if (p.x < mx1)p.x = mx1; if (p.x > mx2)p.x = mx2;
 		if (p.y < my1)p.y = my1; if (p.y > my2)p.y = my2;
-		(*i).s = make_pair(p + realp, sa + pi / 2);
+		(*i).s = make_pair(p, sa + pi / 2);
 	}
-	for (p_pvd i = mpenemy2.begin(); !i->isend; i=i->R) {
-		pair<vector2, double>obj = (*i).s; vector2 p = obj.first - realp; int name = IDENEMY2; double sa = obj.second - pi / 2;
-		p = p + vector2(cos(sa), sin(sa))*velocityenemy2;
-		if (norm(p) <= 300) {
-			double sb = atan2(-p.y, -p.x), sd = sb - sa;
-			while (sd < 0)sd += 2 * pi; while (sd > 2 * pi)sd -= 2 * pi;
-			if (rand() % 4 > 0 && sd > 0.1&&sd < 2 * pi - 0.1) { if (sd < pi)sa += 0.1; else sa -= 0.1; }
-			while (sa < 0)sa += 2 * pi; while (sa > 2 * pi)sa -= 2 * pi;
-		}
-		else {
-			if (rand() % 4 == 0)sa += 0.1; else if (rand() % 3 == 0)sa -= 0.1;
-			while (sa < 0)sa += 2 * pi; while (sa > 2 * pi)sa -= 2 * pi;
-		}
-		if (p.x < mx1)p.x = mx1; if (p.x > mx2)p.x = mx2;
-		if (p.y < my1)p.y = my1; if (p.y > my2)p.y = my2;
-		(*i).s = make_pair(p + realp, sa + pi / 2);
-	}
+	for (p_pvd i = mpenemy2.begin(); !i->isend; i=i->R)
+		i->s = makeenemy2route(i->s);
 }
 void updatekilled() {
 	for (p_pvv it1 = mpbullet.begin(); !it1->isend; it1=it1->R)
 		for (p_pvd it2 = mpenemy1.begin(); !it2->isend; it2 = it2->R) {
 			pvv t1 = (*it1).s; pvd t2 = (*it2).s;
-			if (norm(t1.first - t2.first) <= min(enemydemo.rh, enemydemo.rw) + bulletdemo.r) {
+			if (norm(t1.first - t2.first) <= enemydemo.r + bulletdemo.r) {
 				it1 = it1->L; mpbullet.erase(it1->R); mpenemy1.erase(it2);
 				Nenemy--; break;
 			}
@@ -350,11 +392,23 @@ void updatekilled() {
 	for (p_pvv it1 = mpbullet.begin(); !it1->isend; it1 = it1->R)
 		for (p_pvd it2 = mpenemy2.begin(); !it2->isend; it2 = it2->R) {
 			pvv t1 = (*it1).s; pvd t2 = (*it2).s;
-			if (norm(t1.first - t2.first) <= min(enemydemo.rh, enemydemo.rw) + bulletdemo.r) {
+			if (norm(t1.first - t2.first) <= enemy2demo.r + bulletdemo.r) {
 				it1 = it1->L; mpbullet.erase(it1->R); mpenemy2.erase(it2);
 				Nenemy--; break;
 			}
 		}
+}
+void updatefruit() {
+	for (p_pvi it = mp.begin(); !it->isend; it = it->R) {
+		if (it->s.second == IDTREE && rand()%10000==0) {
+			double ang = 1.0*(rand() % 10000) / 10000 * pi * 2;
+			vector2 v(cos(ang), sin(ang)); v = v * (treedemo.r + fruitdemo.r);
+			mp.insert(make_pair(it->s.first + v, IDFRUIT));
+		}
+		if (it->s.second == IDFRUIT && rand() % 30000 == 0) {
+			it = it->L; mp.erase(it->R);
+		}
+	}
 }
 void getsighted() {
 	mpobj.create();
@@ -371,100 +425,283 @@ void getsightedenemy() {
 		if (!sighted(p, name))continue;
 		mpe1obj.insert(i);
 	}
-}
-void getsightedenemy2() {
 	mpe2obj.create();
-	for (p_pvd i = mpenemy2.begin(); !i->isend; i=i->R) {
+	for (p_pvd i = mpenemy2.begin(); !i->isend; i = i->R) {
 		pvd obj = i->s; vector2 p = obj.first - realp + vector2(_winw / 2, _winh / 2); int name = IDENEMY2;
 		if (!sighted(p, name))continue;
 		mpe2obj.insert(i);
 	}
 }
+void clearsighted() {
+	mpobj.create(); mpe1obj.create(); mpe2obj.create();
+}
 void gettouch() {
 	mptch.create();
-	for (p_ppvi i = mpobj.begin(); !i->isend; i=i->R) {
-		pvi obj = (i->s)->s; vector2 p = obj.first - realp; int name = obj.second;
+	for (p_pvi i = mp.begin(); !i->isend; i=i->R) {
+		pvi obj = i->s; vector2 p = obj.first - realp; int name = obj.second;
 		double normp = norm(p);
-		if (name == IDSTONE && normp >= stonedemo.r + figuredemo.r1-1)continue;
-		if (name == IDTREE && normp >= treedemo.r + figuredemo.r1-1)continue;
-		mptch.insert(i->s);
+		if (name == IDSTONE && normp >= stonedemo.r + figuredemo.r1 - 1)continue;
+		if (name == IDTREE && normp >= treedemo.r + figuredemo.r1 - 1)continue;
+		if (name == IDFRUIT && normp >= fruitdemo.r + figuredemo.r1 - 1)continue;
+		mptch.insert(i);
 	}
 }
 void gettouchenemy() {
 	mpe1tch.create();
-	for (p_ppvd i = mpe1obj.begin(); !i->isend; i=i->R) {
-		pvd obj = (i->s)->s; vector2 p = obj.first - realp; int name = obj.second;
+	for (p_pvd i = mpenemy1.begin(); !i->isend; i=i->R) {
+		pvd obj = i->s; vector2 p = obj.first - realp; int name = obj.second;
 		double normp = norm(p);
-		if (normp >= min(enemydemo.rw, enemydemo.rh) + figuredemo.r1 - 1)continue;
-		mpe1tch.insert(i->s);
+		if (normp >= enemydemo.r + figuredemo.r1 - 1)continue;
+		mpe1tch.insert(i);
 	}
-}
-void gettouchenemy2() {
 	mpe2tch.create();
-	for (p_ppvd i = mpe2obj.begin(); !i->isend; i=i->R) {
-		pvd obj = (i->s)->s; vector2 p = obj.first - realp; int name = obj.second;
+	for (p_pvd i = mpenemy2.begin(); !i->isend; i = i->R) {
+		pvd obj = i->s; vector2 p = obj.first - realp; int name = obj.second;
 		double normp = norm(p);
-		if (normp >= min(enemy2demo.rw, enemy2demo.rh) + figuredemo.r1 - 1)continue;
-		mpe2tch.insert(i->s);
+		if (normp >= enemy2demo.r + figuredemo.r1 - 1)continue;
+		mpe2tch.insert(i);
 	}
 }
 void eraseall(p_pvi it) {
 	if ((*it).s.second == IDTREE)Ntree--;
 	if ((*it).s.second == IDSTONE)Nstone--;
+	if ((*it).s.second == IDTREE || (*it).s.second == IDSTONE) {
+		pair<kdnode<p_pvi>*, p_ppvi> &s = kdpos[it];
+		s.first->s.erase(s.second); kdpos.erase(it);
+	}
 	mp.erase(it);
 }
 void eraseallenemy() {
-	if (!mpe1tch.sz)return;
 	for (p_ppvd it = mpe1tch.begin(); !it->isend; it = it->R) {
 		mpenemy1.erase(it->s);
 		it = it->L; mpe1tch.erase(it->R);
 		Nenemy--;
 	}
-}
-void eraseallenemy2() {
-	if (!mpe2tch.sz)return;
 	for (p_ppvd it = mpe2tch.begin(); !it->isend; it = it->R) {
 		mpenemy2.erase(it->s);
 		it = it->L; mpe2tch.erase(it->R);
 		Nenemy--;
 	}
 }
-void adjust(vector2&v) {
-	double a0 = 1e9, a1 = 1e9;
-	double normv = norm(v);
-	for (p_ppvi i = mptch.begin(); !i->isend; i=i->R) {
-		pvi obj = (i->s)->s; vector2 p = obj.first - realp; int name = obj.second;
-		double normp = norm(p);
-		if (name == IDSTONE) {
-			if ((v*p) < 0)continue;
-			if ((v^p) >= 0) a0 = min(a0, acos((v*p) / normv / normp));
-			else a1 = min(a1, acos((v*p) / normv / normp));
+void updateQ(bool isQ) {
+	p_pvi id = nullptr;
+	for (p_ppvi i = mptch.begin(); !i->isend; i = i->R)
+		if ((i->s) == gainobj) { id = (i->s); break; }
+	if (id != nullptr) {
+		if (isQ) gainpct += 1.0 / 120;
+		else gainpct = 0;
+	}
+	else {
+		for (p_ppvi i = mptch.begin(); !i->isend; i = i->R) {
+			int name = ((i->s)->s).second;
+			if (name == IDTREE || name == IDSTONE) { id = (i->s); break; }
 		}
-		if (name == IDTREE) {
-			if ((v*p) < 0)continue;
-			if ((v^p) >= 0) a0 = min(a0, acos((v*p) / normv / normp));
-			else a1 = min(a1, acos((v*p) / normv / normp));
+		gainpct = 0;
+	}
+	gainobj = id;
+	if (isQ) {
+		if (gainpct >= 1.0) {
+			FP -= 5;
+			if ((gainobj->s).second == IDTREE) number_wood++, Ntree--, mist += 200;
+			if ((gainobj->s).second == IDSTONE) number_stone++, Nstone--, mist += 500;
+			eraseall(gainobj);
+			gainobj = nullptr; gainpct = 0;
 		}
-	}
-	if (a0 > pi / 2 && a1 > pi / 2)return;
-	if (a0 <= pi / 2 && a1 <= pi / 2) {
-		v = vector2(0, 0); return;
-	}
-	if (a0 <= pi / 2) {
-		double a = atan2(v.y, v.x) - (pi / 2 - a0);
-		double nv = normv * cos(pi / 2 - a0);
-		v = vector2(nv*cos(a), nv*sin(a)); return;
-	}
-	if (a1 <= pi / 2) {
-		double a = atan2(v.y, v.x) + (pi / 2 - a1);
-		double nv = normv * cos(pi / 2 - a1);
-		v = vector2(nv*cos(a), nv*sin(a)); return;
 	}
 }
+bool updatetouchenemy() {
+	HP = HP - 5 * mpe1tch.sz - 3 * mpe2tch.sz;
+	bool res = mpe1tch.sz || mpe2tch.sz;
+	eraseallenemy();
+	return res;
+}
+void updateeatfruit() {
+	for (p_ppvi it = mptch.begin(); !it->isend; it = it->R) {
+		if (it->s->s.second == IDFRUIT) {
+			FP = FP + 10; if (FP >= 100.0)FP = 100.0;
+			eraseall(it->s); it = it->L; mptch.erase(it->R);
+		}
+	}
+}
+void initkdtree() {
+	kdpos.clear();
+	mpkd.create(mx1, my1, mx2, my2, 0.01, 0.01);
+	for (p_pvi it = mp.begin(); !it->isend; it = it->R)
+		if (it->s.second == IDTREE || it->s.second == IDSTONE)
+			kdpos[it]=mpkd.insert(it->s.first, it);
+}
+
+void _restart1(bool ifload = 0) {
+	flushmouse(); 
+
+	//左上角文本框信息初始化
+	textbox TBtree, TBstone, TBfps, TBmist, TBhp, TBfp;
+	TBfps.init();
+	TBfps.setbox(0, 0, _winw, _winh);
+	TBfps.setstyle(GRAY80, 20, 0, "等线", lgleft | lgtop);
+	TBfps.text = ""; TBfps.paint();
+	TBmist = TBfps;
+	TBmist.setbox(0, TBfps.ty2, _winw, _winh);
+	TBmist.text = ""; TBmist.paint();
+	TBhp = TBmist;
+	TBhp.setbox(0, TBmist.ty2, _winw, _winh);
+	TBhp.text = "HP: "; TBhp.paint();
+	TBfp = TBhp;
+	TBfp.setbox(0, TBhp.ty2, _winw, _winh);
+	TBfp.text = "FP: "; TBfp.paint(); 
+	TBfp.x1 = (TBhp.tx2 - TBhp.tx1) - (TBfp.tx2 - TBfp.tx1); TBfp.paint();
+
+	//右上角~
+	TBtree.init();
+	TBtree.setbox(0, 0, _winw, _winh);
+	TBtree.setstyle(rgb(50, 100, 0), 20, 0, "等线", lgright | lgtop);
+	TBtree.text = ""; TBtree.paint();
+	TBstone = TBtree;
+	TBstone.setbox(0, TBtree.ty2, _winw, _winh);
+	TBstone.text = ""; TBstone.paint();
+	
+	//载入存档或初始化变量
+	if (ifload)loadgame();else initgame();
+
+	//额外变量初始化
+
+	//计时器变量
+	int tick = 0, injuredtick = -1e9, shoottick = -1e9; int t = 0, rest = 0; DWORD last = GetTickCount();
+
+	gainobj = nullptr; gainpct = 0;
+	initkdtree();
+
+	while (!_isquit) {
+
+		//计时
+		tick++;
+		t++;
+		if (GetTickCount() >= last + 1000) { last += 1000; rest = t; t = 0; }
+
+		//如果窗口未激活
+		if (!iswndactive()) {
+			while (!iswndactive()) peekmsg(), delay(1);
+			last = GetTickCount();
+			flushkey(); flushmouse();
+			while (GetAsyncKeyState(VK_ESCAPE) & 0x8000) peekmsg(), delay(1);
+			continue;
+		}
+
+		//鼠标左键
+		vector2 ms(getmousex(hwnd) - _winw / 2, getmousey(hwnd) - _winh / 2);
+		figure.angle = atan2(ms.y, ms.x) + pi / 2;
+		if (GetAsyncKeyState(VK_LBUTTON)&&tick - shoottick >= velocityreload && number_stone>0) {
+			shoottick = tick;
+			number_stone--;
+			mist += 100;
+			double a = atan2(ms.y, ms.x), ca = cos(a), sa = sin(a); vector2 v(ca, sa);
+			mpbullet.insert(make_pair(v*figuredemo.r1 + realp, v * 300));
+		}
+
+		if (tick % 50 == 0) {
+			if (rand() % 50 == 0)produceobj(IDTREE);
+			if (rand() % 30 == 0)produceobj(IDSTONE);
+			if (rand() % 12 == 0)produceobj(IDENEMY);
+			if (rand() % 8 == 0)produceobj(IDENEMY2);
+		}
+		
+		//处理地图信息
+		updatebullet();
+		updateenemy();
+		updatekilled();
+		updatefruit();
+
+		//与物体接触或按Q
+		gettouch(); gettouchenemy(); 
+		updateQ(GetAsyncKeyState('Q') & 0x8000);
+		updatetouchenemy();
+		updateeatfruit();
+
+		//按E进入商店
+		if (GetAsyncKeyState('E') & 0x8000) {
+			_shop();
+			flushkey(); flushmouse();
+			while (GetAsyncKeyState(VK_ESCAPE))peekmsg(), delay(1);
+			continue;
+		}
+
+		//WSAD移动，调整加速度
+		vector2 a;
+		if (GetAsyncKeyState('W') & 0x8000)a.y -= 0.23;
+		if (GetAsyncKeyState('S') & 0x8000)a.y += 0.23;
+		if (GetAsyncKeyState('A') & 0x8000)a.x -= 0.23;
+		if (GetAsyncKeyState('D') & 0x8000)a.x += 0.23;
+		if (a.x != 0 || a.y != 0)a = a * (1.0 / norm(a));
+		if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) {
+			savegame(); break;
+		}
+
+		//调整速度
+		realv = realv + a;
+		double nv = norm(realv);
+		if (nv > velocity) realv = realv * (velocity / norm(realv)), nv = velocity;
+		if (nv < 0.1)realv = { 0,0 }, nv = 0; else realv = realv * ((nv - 0.2) / nv);
+		adjust(realp, figuredemo.r1, realv, &mptch);
+		if (mptch.sz) realv = realv * 0.8;
+		realp = realp + realv;
+
+		//修改mist, HP, FP值
+		mist += 1.5;
+		mist -= min(Ntree*0.01, mist*0.01);
+		paintmist(1.0*mist / 100000 * sin(2 * pi*tick / 500) + 2.0*mist / 100000);
+		HP -= min((1.0*mist / 100000)*(1.0*mist / 100000)*0.2, 0.01);
+		if (HP<100.0)HP += 0.001;
+		FP -= 0.005;
+		if (FP <= 50.0) HP -= 0.01;
+		if (FP <= 10.0) HP -= 0.1;
+
+		//开始绘制地图
+		clearscreen(GRAY200);
+		paintmap();
+		figure.paint();
+		
+		//绘制各种文本
+		string snf = "FPS: "; snf += constr(rest);
+		TBfps.text = snf.c_str(); TBfps.paint();
+		string snm = "Mist: "; snm += constr(mist);
+		TBmist.text = snm.c_str(); TBmist.paint();
+		string snw = "Number Of Wood: "; snw += constr(number_wood);
+		TBtree.text = snw.c_str(); TBtree.paint();
+		string sns = "Number Of Stone: "; sns += constr(number_stone);
+		TBstone.text = sns.c_str(); TBstone.paint();
+		string snhp = "HP: "; snhp += constr((int)round(HP));
+		TBhp.textcolor = (tick - injuredtick <= 50) ? RGB(255,0,0) : GRAY80; 
+		TBhp.text = "HP: "; TBhp.paint();
+		setd(0, 0, RGB(200, 22, 9)); dbar(TBhp.tx2, TBhp.ty1, TBhp.tx2 + 200, TBhp.ty2);
+		setf(RGB(200, 22, 9)); fbar(TBhp.tx2, TBhp.ty1, TBhp.tx2 + (int)round(HP) * 2, TBhp.ty2);
+		TBhp.text = snhp.c_str(); TBhp.paint();
+		string snfp = "FP: "; snfp += constr((int)round(FP));
+		TBfp.textcolor = GRAY80;
+		TBfp.text = "FP: "; TBfp.paint();
+		setd(0, 0, RGB(70, 130, 200)); dbar(TBfp.tx2, TBfp.ty1, TBfp.tx2 + 200, TBfp.ty2);
+		setf(RGB(70,130,200)); fbar(TBfp.tx2, TBfp.ty1, TBfp.tx2 + (int)round(FP) * 2, TBfp.ty2);
+		TBfp.text = snfp.c_str(); TBfp.paint();
+
+		//绘制到设备
+		flushpaint();
+
+		//存档, 判断是否死亡
+		if (!(tick % 1500)) savegame();
+		if ((int)round(HP) <= 0)break;
+
+		//消息循环
+		peekmsg(); delay(1);
+	}
+	mpkd.clear(); kdpos.clear();
+	mp.clear(); mpobj.clear(); mptch.clear();
+	mpenemy1.clear(); mpe1obj.clear(); mpe1tch.clear();
+	mpenemy2.clear(); mpe2obj.clear(); mpe2tch.clear();
+	mpbullet.clear();
+}
+
 BYTE*rcData;
 tagRGBTRIPLE arrbitmap[800][600]; bool flagarr;
-int Sr[800][600],Sg[800][600],Sb[800][600];
-
+int Sr[800][600], Sg[800][600], Sb[800][600];
 string UseCustomResource(int rcId) {
 	HRSRC hRsrc = FindResource(_hinst, MAKEINTRESOURCE(rcId), RT_BITMAP);
 	if (NULL == hRsrc) return "rcError1";
@@ -510,185 +747,6 @@ void initrcData() {
 			Sb[i][j] = Sb[i - 1][j] + Sb[i][j - 1] - Sb[i - 1][j - 1] + arrbitmap[i][j].rgbtBlue;
 }
 
-void _restart1(bool ifload = 0) {
-	flushmouse(); 
-
-	textbox TBtree, TBstone, TBfps, TBmist, TBhp, TBfp;
-	TBfps.init();
-	TBfps.setbox(0, 0, _winw, _winh);
-	TBfps.setstyle(GRAY80, 20, 0, "等线", lgleft | lgtop);
-	TBfps.text = ""; TBfps.paint();
-	TBmist = TBfps;
-	TBmist.setbox(0, TBfps.ty2, _winw, _winh);
-	TBmist.text = ""; TBmist.paint();
-	TBhp = TBmist;
-	TBhp.setbox(0, TBmist.ty2, _winw, _winh);
-	TBhp.text = "HP: "; TBhp.paint();
-	TBfp = TBhp;
-	TBfp.setbox(0, TBhp.ty2, _winw, _winh);
-	TBfp.text = "FP: "; TBfp.paint(); 
-	TBfp.x1 = (TBhp.tx2 - TBhp.tx1) - (TBfp.tx2 - TBfp.tx1); TBfp.paint();
-
-	TBtree.init();
-	TBtree.setbox(0, 0, _winw, _winh);
-	TBtree.setstyle(rgb(50, 100, 0), 20, 0, "等线", lgright | lgtop);
-	TBtree.text = ""; TBtree.paint();
-	TBstone = TBtree;
-	TBstone.setbox(0, TBtree.ty2, _winw, _winh);
-	TBstone.text = ""; TBstone.paint();
-	
-	if (ifload)loadgame();else initgame();
-
-	gainobj = nullptr; gainpct = 0;
-
-	int tick = 0, injuredtick = -1e9, shoottick = -1e9; int t = 0, rest = 0; DWORD last = GetTickCount();
-	while (!_isquit) {
-		tick++;
-
-		if (!iswndactive()) {
-			while (!iswndactive()) peekmsg(), delay(1);
-			last = GetTickCount();
-			flushkey(); flushmouse();
-			while (GetAsyncKeyState(VK_ESCAPE) & 0x8000) peekmsg(), delay(1);
-			continue;
-		}
-
-		vector2 ms(getmousex(hwnd) - _winw / 2, getmousey(hwnd) - _winh / 2);
-		figure.angle = atan2(ms.y, ms.x) + pi / 2;
-		if (GetAsyncKeyState(VK_LBUTTON)&&tick - shoottick >= velocityreload && number_stone>0) {
-			shoottick = tick;
-			number_stone--;
-			mist += 100;
-			double a = atan2(ms.y, ms.x), ca = cos(a), sa = sin(a); vector2 v(ca, sa);
-			mpbullet.insert(make_pair(v*figuredemo.r1 + realp, v * 300));
-		}
-
-		if (tick % 50 == 0) {
-			if (rand() % 50 == 0)produceobj(IDTREE);
-			if (rand() % 30 == 0)produceobj(IDSTONE);
-			if (rand() % 10 == 0)produceobj(IDENEMY);
-			if (rand() % 10 == 0)produceobj(IDENEMY2);
-		}
-		
-		updatebullet();
-		updateenemy();
-		updatekilled();
-		if (GetAsyncKeyState('E') & 0x8000) {
-			_shop();
-			flushkey(); flushmouse();
-			while (GetAsyncKeyState(VK_ESCAPE))peekmsg(), delay(1);
-			continue;
-		}
-		vector2 a;
-		if (GetAsyncKeyState('W') & 0x8000)a.y -= 0.23;
-		if (GetAsyncKeyState('S') & 0x8000)a.y += 0.23;
-		if (GetAsyncKeyState('A') & 0x8000)a.x -= 0.23;
-		if (GetAsyncKeyState('D') & 0x8000)a.x += 0.23;
-		if (a.x != 0 || a.y != 0)a = a * (1.0 / norm(a));
-		if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) {
-			savegame(); break;
-		}
-		realv = realv + a;
-		double nv = norm(realv);
-		if (nv > velocity) realv = realv * (velocity / norm(realv)), nv = velocity;
-		if (nv < 0.1)realv = { 0,0 }, nv = 0; else {
-			realv = realv * ((nv - 0.2) / nv);
-		}
-
-		getsighted(); getsightedenemy(); getsightedenemy2();
-		gettouch(); gettouchenemy(); gettouchenemy2();
-		if (mptch.sz) {
-			ref(times, 0, 1)adjust(realv);
-			realv = realv * 0.8;
-		}
-		realp = realp + realv;
-		if (realp.x < mx1)realp.x = mx1;
-		if (realp.x > mx2)realp.x = mx2;
-		if (realp.y < my1)realp.y = my1;
-		if (realp.y > my2)realp.y = my2;
-
-		if (mpe1tch.sz) {
-			HP = HP - 5 * mpe1tch.sz;
-			eraseallenemy();
-			injuredtick = tick;
-		}
-		if (mpe2tch.sz) {
-			HP = HP - 3 * mpe2tch.sz;
-			eraseallenemy2();
-			injuredtick = tick;
-		}
-		bool isQ = (GetAsyncKeyState('Q') & 0x8000);
-		{
-			p_pvi id = nullptr;
-			for (p_ppvi i = mptch.begin(); !i->isend; i=i->R)
-				if ((i->s) == gainobj) { id = (i->s); break; }
-			if (id != nullptr) {
-				if(isQ) gainpct += 1.0 / 120;
-				else gainpct = 0;
-			}
-			else {
-				for (p_ppvi i = mptch.begin(); !i->isend; i=i->R) {
-					int name = ((i->s)->s).second;
-					if (name == IDTREE || name == IDSTONE) { id = (i->s); break; }
-				}
-				gainpct = 0;
-			}
-			gainobj = id;
-		}
-		if (isQ) {
-			if (gainpct >= 1.0) {
-				FP -= 5;
-				if ((gainobj->s).second == IDTREE) number_wood++, Ntree--, mist += 200;
-				if ((gainobj->s).second == IDSTONE) number_stone++, Nstone--, mist += 500;
-				eraseall(gainobj);
-				gainobj = nullptr; gainpct = 0;
-			}
-		}
-
-		t++;
-		clearscreen(GRAY200);
-		paintmap();
-		figure.paint();
-
-		mist += 1.5;
-		mist -= min(Ntree*0.01, mist*0.01);
-		paintmist(1.0*mist/100000*sin(2 * pi*tick / 500) + 2.0*mist/100000);
-		HP -= min((1.0*mist / 100000)*(1.0*mist / 100000)*0.2, 0.01);
-		if(HP<100.0)HP += 0.001;
-		FP -= 0.005;
-
-		if (GetTickCount() >= last + 1000) { last += 1000; rest = t; t = 0; }
-		
-		string snf = "FPS: "; snf += constr(rest);
-		TBfps.text = snf.c_str(); TBfps.paint();
-		string snm = "Mist: "; snm += constr(mist);
-		TBmist.text = snm.c_str(); TBmist.paint();
-		string snw = "Number Of Wood: "; snw += constr(number_wood);
-		TBtree.text = snw.c_str(); TBtree.paint();
-		string sns = "Number Of Stone: "; sns += constr(number_stone);
-		TBstone.text = sns.c_str(); TBstone.paint();
-		string snhp = "HP: "; snhp += constr((int)round(HP));
-		TBhp.textcolor = (tick - injuredtick <= 50) ? RGB(255,0,0) : GRAY80; 
-		TBhp.text = "HP: "; TBhp.paint();
-		setd(0, 0, RGB(200, 22, 9)); dbar(TBhp.tx2, TBhp.ty1, TBhp.tx2 + 200, TBhp.ty2);
-		setf(RGB(200, 22, 9)); fbar(TBhp.tx2, TBhp.ty1, TBhp.tx2 + (int)round(HP) * 2, TBhp.ty2);
-		TBhp.text = snhp.c_str(); TBhp.paint();
-		string snfp = "FP: "; snfp += constr((int)round(FP));
-		TBfp.textcolor = GRAY80;
-		TBfp.text = "FP: "; TBfp.paint();
-		setd(0, 0, RGB(70, 130, 200)); dbar(TBfp.tx2, TBfp.ty1, TBfp.tx2 + 200, TBfp.ty2);
-		setf(RGB(70,130,200)); fbar(TBfp.tx2, TBfp.ty1, TBfp.tx2 + (int)round(FP) * 2, TBfp.ty2);
-		TBfp.text = snfp.c_str(); TBfp.paint();
-
-
-		flushpaint();
-
-		if (!(tick % 1500)) savegame();
-		if ((int)round(HP) <= 0)break;
-
-		peekmsg(); delay(1);
-	}
-}
 void paintbmp(int x, int y, int X, int Y) {
 	if (!flagarr) initrcData();
 	beginPdot();
@@ -937,6 +995,7 @@ position1:
 		delay(1), peekmsg();
 	}
 }
+
 int WINAPI WinMain(
 	HINSTANCE hInstance,
 	HINSTANCE hPrevinstance,
