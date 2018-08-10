@@ -248,7 +248,7 @@ void initgame() {
 	producemap();
 	realp = { 0,0 }; realv = { 0,0 };
 	number_wood = 0, number_stone = 0;
-	velocity = 2.5; velocityenemy1 = 1.7; velocityenemy2 = 2.7; velocityenemy3 = 6.0;  velocityenemy4 = 6.0;
+	velocity = 2.5; velocityenemy1 = 1.5; velocityenemy2 = 2.7; velocityenemy3 = 6.0;  velocityenemy4 = 6.0;
 	velocitybullet = 5; velocityreload = 50; velocityexploit = 1.0 / 120; multipleshoot = 1;
 	rangebullet = 300.0;
 	mist = 0.0;
@@ -257,9 +257,9 @@ void initgame() {
 	shoppossession[0] = 1;
 	currenttick = 0;
 #ifdef DEBUGGING
-	HP = 100000.0;
-	number_stone = 1000;
-	number_wood = 1000;
+	HP = 100.0;
+	number_stone = 0;
+	number_wood = 0;
 #endif
 }
 
@@ -345,12 +345,6 @@ vector2 randompos() {
 void producemap() {
 	mp.create(); mpenemy.create(); mpbullet.create();
 	Ntree = 250; Nstone = 500; Nenemy1 = 3; Nenemy2 = 5; Nenemy3 = 0; Nenemy4 = 3;
-#ifdef DEBUGGING
-	Nenemy1 = 30;
-	Nenemy2 = 50;
-	Nenemy3 = 40;
-	Nenemy4 = 30;
-#endif
 	ref(i, 1, Ntree)mp.insert(make_pair(randompos(), IDTREE));
 	ref(i, 1, Nstone)mp.insert(make_pair(randompos(), IDSTONE));
 	ref(i, 1, Nenemy1)mpenemy.insert(make_pair(randompos(), enemyinf(IDENEMY1)));
@@ -610,13 +604,13 @@ void makeenemy4route(pve&s) {
 	if (s.second.tmp > 0) {
 		s.second.tmp--;
 		if (!s.second.tmp) {
-			s.second.life = s.second.life*0.6;
-			pve S = s; S.second.ang = pi * 2 - S.second.ang;
-			if (s.second.life>1.0) mpenemy.insert(S),Nenemy4++;
+			s.second.life = s.second.life*0.8;
+			pve S = s; S.second.ang = S.second.ang+pi;
+			mpenemy.insert(S),Nenemy4++;
 		}
 		return;
 	}
-	if (rand() % 2000 == 0) {
+	if (rand() % 2000 == 0 && s.second.life>1.0) {
 		s.second.tmp = 500;
 		return;
 	}
@@ -664,10 +658,9 @@ void updatekilled() {
 				if (it2->s.second.life < 1e-6) {
 					mpenemy.erase(it2);
 					if (id == IDENEMY1) {
-						mpenemy.insert(make_pair(t2.first, enemyinf(IDENEMY3, t2.second.ang - pi / 3)));
-						mpenemy.insert(make_pair(t2.first, enemyinf(IDENEMY3, t2.second.ang - pi * 2 / 3)));
+						mpenemy.insert(make_pair(t2.first, enemyinf(IDENEMY3, t2.second.ang - pi / 2)));
 						mpenemy.insert(make_pair(t2.first, enemyinf(IDENEMY3, t2.second.ang + pi / 3)));
-						mpenemy.insert(make_pair(t2.first, enemyinf(IDENEMY3, t2.second.ang + pi * 2 / 3)));
+						mpenemy.insert(make_pair(t2.first, enemyinf(IDENEMY3, t2.second.ang + pi)));
 					}
 					declineN(id);
 				}
@@ -877,9 +870,11 @@ void _restart1(bool ifload = 0) {
 		if (tick % 50 == 0) {
 			if (rand() % 50 == 0)produceobj(IDTREE);
 			if (rand() % 30 == 0)produceobj(IDSTONE);
-			if (currenttick >= 1500) {
-				if (rand() % 10 == 0)produceobj(IDENEMY1);
-				if (rand() % 5 == 0)produceobj(IDENEMY2);
+			if (currenttick >= 1500 && currenttick <= 8000) {
+				if (rand() % 5 == 0)produceobj(IDENEMY1);
+				if (rand() % 3 == 0)produceobj(IDENEMY2);
+				if (rand() % 8 == 0)produceobj(IDENEMY4);
+
 			}
 		}
 		

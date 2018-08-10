@@ -33,6 +33,7 @@ public:
 		s->R->L = q; s->R = q; sz++; return q;
 	}
 	void erase(lst<T>* S) {
+		if (S == nullptr)return;
 		S->L->R = S->R;
 		S->R->L = S->L; sz--;
 		delete S;
