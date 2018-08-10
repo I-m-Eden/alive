@@ -44,6 +44,9 @@
     <ClInclude Include="head.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="processresource.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="alive.rc">
@@ -54,5 +57,8 @@
     <Image Include="back.bmp">
       <Filter>资源文件</Filter>
     </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="shop.txt" />
   </ItemGroup>
 </Project>

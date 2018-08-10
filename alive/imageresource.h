@@ -7,6 +7,7 @@ const int IDSTONE = 2;
 const int IDFRUIT = 5;
 const int IDENEMY = 3;
 const int IDENEMY2 = 4;
+const int IDENEMY3 = 6;
 class figureimage {
 private:
 	void drawellipse(COLORREF fc, double x1, double y1, double x2, double y2, int d) {
@@ -180,13 +181,13 @@ public:
 	COLORREF fc1, fc2;
 	double angle;
 	double rw, rh, r;
-	enemyimage() {
+	enemyimage(double sz) {
 		rw = 42.0; rh = 65.0; r = min(rw, rh);
 		ps1 = 0; pw1 = 0; pc1 = 0x788870;
 		fc1 = 0xA0B0A0;
 		ps2 = 0; pw2 = 0; pc2 = 0xB2EB79;
 		fc2 = 0x8FCF4F;
-		angle = 0; setsize(0.5);
+		angle = 0; setsize(sz);
 		x = y = 0;
 		for (int i = Sn/2+1; i < Sn; ++i)
 			s[i] = s[Sn - i], s[i].x = -s[i].x;
@@ -215,7 +216,7 @@ public:
 		setf(fc2);
 		ppolygon(S, Tn);
 	}
-}enemydemo;
+}enemydemo(0.5), enemy3demo(0.2);
 class bulletimage {
 private:
 	double x, y;

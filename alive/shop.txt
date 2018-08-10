@@ -1,0 +1,36 @@
+6
+
+root
+NULL
+0 0 0
+0
+
+velocity
+Run faster
+0.15 10 0
+1
+0
+
+velocity
+Run more faster
+0.15 12 3
+1
+1
+
+multipleshoot
+Shoot twice
+1 8 8 
+1
+0
+
+multipleshoot
+Shoot the third time
+1 6 6
+1
+3
+
+velocitybullet
+Bullet run faster
+2 6 4
+1
+0
