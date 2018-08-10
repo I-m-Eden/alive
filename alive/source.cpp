@@ -609,8 +609,11 @@ void makeenemy3route(pve&s) {
 void makeenemy4route(pve&s) {
 	if (s.second.tmp > 0) {
 		s.second.tmp--;
-		pve S = s; S.second.ang = pi * 2 - S.second.ang;
-		if (!s.second.tmp) mpenemy.insert(S);
+		if (!s.second.tmp) {
+			s.second.life = s.second.life*0.6;
+			pve S = s; S.second.ang = pi * 2 - S.second.ang;
+			if (s.second.life>1.0) mpenemy.insert(S),Nenemy4++;
+		}
 		return;
 	}
 	if (rand() % 2000 == 0) {
