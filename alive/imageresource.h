@@ -5,9 +5,10 @@ using namespace std;
 const int IDTREE = 1;
 const int IDSTONE = 2;
 const int IDFRUIT = 5;
-const int IDENEMY = 3;
+const int IDENEMY1 = 3;
 const int IDENEMY2 = 4;
 const int IDENEMY3 = 6;
+const int IDENEMY4 = 7;
 class figureimage {
 private:
 	void drawellipse(COLORREF fc, double x1, double y1, double x2, double y2, int d) {
@@ -216,7 +217,7 @@ public:
 		setf(fc2);
 		ppolygon(S, Tn);
 	}
-}enemydemo(0.5), enemy3demo(0.2);
+}enemy1demo(0.5), enemy3demo(0.2);
 class bulletimage {
 private:
 	double x, y;
@@ -292,3 +293,72 @@ public:
 		ppolygon(S, 3);
 	}
 }enemy2demo;
+class enemy4image {
+private:
+	int ps1, pw1; COLORREF pc1;
+	double x, y;
+	double sz;
+public:
+	COLORREF fc1;
+	double angle;
+	double r;
+	enemy4image() {
+		r = 30;
+		ps1 = 0; pw1 = 0; pc1 = rgb(130, 70, 200);
+		fc1 = rgb(130, 70, 200);
+		angle = 0; setsize(1.0);
+		x = y = 0;
+	}
+	void setsize(double Sz) {
+		sz = Sz; r = r * sz;
+	}
+	void setposition(double X, double Y) {
+		x = X; y = Y;
+	}
+	void paint() {
+		double ca = cos(angle), sa = sin(angle);
+		setd(ps1, pw1, pc1);
+		setf(fc1);
+		pcircle(x, y, r);
+	}
+}enemy4demo;
+double getenemyatk(int ID) {
+	if (ID == IDENEMY1) return 5;
+	if (ID == IDENEMY2) return 3;
+	if (ID == IDENEMY3) return 1;
+	if (ID == IDENEMY4) return 1;
+}
+double getenemyR(int ID) {
+	if (ID == IDENEMY1)return enemy1demo.r;
+	if (ID == IDENEMY2)return enemy2demo.r;
+	if (ID == IDENEMY3)return enemy3demo.r;
+	if (ID == IDENEMY4)return enemy4demo.r;
+}
+double getenemylife(int ID) {
+	if (ID == IDENEMY1) return 1;
+	if (ID == IDENEMY2) return 1;
+	if (ID == IDENEMY3) return 1;
+	if (ID == IDENEMY4) return 2;
+}
+void paintenemy(int ID, vector2 p, double ang) {
+	if (ID == IDENEMY1) {
+		enemy1demo.setposition(p.x, p.y);
+		enemy1demo.angle = ang;
+		enemy1demo.paint();
+	}
+	if (ID == IDENEMY2) {
+		enemy2demo.setposition(p.x, p.y);
+		enemy2demo.angle = ang;
+		enemy2demo.paint();
+	}
+	if (ID == IDENEMY3) {
+		enemy3demo.setposition(p.x, p.y);
+		enemy3demo.angle = ang;
+		enemy3demo.paint();
+	}
+	if (ID == IDENEMY4) {
+		enemy4demo.setposition(p.x, p.y);
+		enemy4demo.angle = ang;
+		enemy4demo.paint();
+	}
+}
