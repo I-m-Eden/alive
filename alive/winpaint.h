@@ -96,7 +96,7 @@ bool peekmsg();											//尝试取出消息
 bool iswndactive();										//窗体是否处于激活状态
 bool iskeydown();										//是否按键
 bool iskeydown(int x);									//是否按键x
-int getkeydown();										//获取按键消息
+WPARAM getkeydown();										//获取按键消息
 bool islbuttondown();									//是否按下鼠标左键
 bool islbuttonup();										//是否松开鼠标左键
 bool isrbuttondown();									//是否按下鼠标右键
@@ -275,7 +275,7 @@ bool iskeydown(int x) {
 	for (int i = 1; i <= _msbufn; ++i)if (_msbuf[i].message == WM_KEYDOWN && _msbuf[i].wParam == x)return 1;
 	return 0;
 }
-int getkeydown() {
+WPARAM getkeydown() {
 	for (int i = 1; i <= _msbufn; ++i)if (_msbuf[i].message == WM_KEYDOWN)return _msbuf[i].wParam;
 	return 0;
 }
@@ -534,7 +534,7 @@ void froundbar(int x1, int y1, int x2, int y2, int w, int h) {
 void proundbar(int x1, int y1, int x2, int y2, int w, int h) {
 	RoundRect(_hDCMem, x1, y1, x2, y2, w, h);
 }
-void ptext(int x, int y, LPCSTR s) { TextOut(_hDCMem, x, y, s, strlen(s)); }
+void ptext(int x, int y, LPCSTR s) { TextOut(_hDCMem, x, y, s, (int)strlen(s)); }
 void pbezier(int x1,int y1,int x2,int y2,int x3,int y3,int x4,int y4) {
 	POINT pt[] = { {x1,y1},{x2,y2},{x3,y3},{x4,y4} };
 	PolyBezier(_hDCMem, pt, 4);

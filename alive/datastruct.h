@@ -1,7 +1,4 @@
 #pragma once
-#ifndef H_DATASTRUCT
-#define H_DATASTRUCT
-
 #include "head.h"
 #include "vector2.h"
 template <class T> class lst {
@@ -33,7 +30,7 @@ public:
 		s->R->L = q; s->R = q; sz++; return q;
 	}
 	void erase(lst<T>* S) {
-		if (S == nullptr)return;
+		//if (S == nullptr)return;
 		S->L->R = S->R;
 		S->R->L = S->L; sz--;
 		delete S;
@@ -117,5 +114,3 @@ private:
 		search(S->R, a, x, y, r);
 	}
 };
-
-#endif

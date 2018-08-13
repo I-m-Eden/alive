@@ -29,4 +29,7 @@ double operator^(vector2 a, vector2 b) {
 bool operator ==(vector2 a, vector2 b) {
 	return a.x == b.x&&a.y == b.y;
 }
+double atan2(vector2 a) {
+	return atan2(a.y, a.x);
+}
 #endif

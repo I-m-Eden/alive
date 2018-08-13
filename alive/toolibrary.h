@@ -57,7 +57,7 @@ public:
 		SelectObject(hdc, hfont);
 		GetCharABCWidths(hdc, 0, 127, arrABC);
 		int X = x1, Y = y1;
-		BYTE lx = layoutgravity & 3, ly = layoutgravity >> 2;
+		BYTE lx = layoutgravity & 3, ly = layoutgravity >> 2 << 2;
 		int width = 0;
 		int height = fh;
 		for (int i = 0; i < strlen(text); ++i) {
@@ -80,7 +80,7 @@ public:
 			Rectangle(hdc, tx1 - 2, ty1, tx2 + 2, ty2);
 			DeleteObject(hbrush);
 		}
-		TextOut(hdc, X, Y, text, strlen(text));
+		TextOut(hdc, X, Y, text, (int)strlen(text));
 		DeleteObject(hfont);
 	}
 	void clear(COLORREF bc) {
@@ -115,7 +115,7 @@ public:
 	vector<pair<POINT, COLORREF> > s;
 	void init() {
 		setstyle(3); setbox(0, 0, 0, 0);
-		x = y = 0; 
+		x = y = 0;
 		mouseover_ = 0; mouseover = 0;
 		lbuttonpress = 0;
 		lbuttonrelease = 0;
@@ -183,7 +183,7 @@ public:
 			}
 			for (vector<pair<POINT, COLORREF> >::iterator it = s.begin(); it != s.end(); it++) {
 				int x = (*it).first.x, y = (*it).first.y;
-				pdot(x, y, inversecolor(gdot(x,y)));
+				pdot(x, y, inversecolor(gdot(x, y)));
 			}
 		}
 		else pickedtrans = 0;
@@ -241,7 +241,7 @@ public:
 		HBRUSH hbrush = CreateSolidBrush(buttoncolor[id]);
 		SelectObject(hdc, hbrush);
 		SelectObject(hdc, hnullpen);
-		Rectangle(hdc, x1,y1,x2,y2);
+		Rectangle(hdc, x1, y1, x2, y2);
 		DeleteObject(hbrush);
 		if (text == NULL)return;
 		HFONT hfont = CreateFont(fh, fw, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, flpf);
@@ -257,7 +257,7 @@ public:
 		}
 		X = (x1 + x2 - width) / 2;
 		Y = (y1 + y2 - height) / 2;
-		TextOut(hdc, X, Y, text, strlen(text));
+		TextOut(hdc, X, Y, text, (int)strlen(text));
 		DeleteObject(hfont);
 	}
 	void listen() {
