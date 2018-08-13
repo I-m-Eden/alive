@@ -353,41 +353,40 @@ public:
 }enemy4demo;
 class boss1image {
 private:
+	BYTE pt[130][130][3];
 	double x, y;
-
 	int ps1, pw1; COLORREF pc1;
 	int ps2, pw2, pc2, fc2;
 	double x1, y1, r1, x2, y2, r2;
 	int ps3, pw3, pc3, fc3;
 	double x3, y3, r3;
 	double sz;
-	COLORREF getrgbtsp(COLORREF c, COLORREF tsc, double tsp) {
-		double r = GetRValue(c), g = GetGValue(c), b = GetBValue(c);
-		double R = GetRValue(tsc), G = GetGValue(tsc), B = GetBValue(tsc);
-		r = tsp * r + (1 - tsp) * R; g = tsp * g + (1 - tsp) * G; b = tsp * b + (1 - tsp) * B;
-		return RGB((int)round(r), (int)round(g), (int)round(b));
+	void getrgbtsp(BYTE&r, BYTE&g, BYTE&b, BYTE  R, BYTE G, BYTE B, double tsp) {
+		r = BYTE(tsp * r + (1 - tsp) * R); 
+		g = BYTE(tsp * g + (1 - tsp) * G); 
+		b = BYTE(tsp * b + (1 - tsp) * B);
 	}
 public:
 	COLORREF fc1;
 	double angle;
-	double r;
-	COLORREF tsc; double tsp;
+	double r; int R;
+	double tsp;
 	boss1image() {
-		r = 50;
+		r = 50; R = (int)round(r + 10);
 		ps1 = 0; pw1 = 0; pc1 = rgb(200, 80, 0);
 		fc1 = rgb(200, 80, 30);
 		ps2 = 0; pw2 = 3; pc2 = rgb(0, 0, 0);
 		fc2 = rgb(220, 220, 220);
 		ps3 = 0; pw3 = 2; pc3 = rgb(200, 80, 0);
 		fc3 = rgb(220, 220, 220);
-		angle = 0; setsize(1.0); settransparent(WHITE, 1.0);
+		angle = 0; setsize(1.0); settransparent(1.0);
 		x = y = 0;
 		x1 = r * 0.1; y1 = r * 0.4; r1 = r /4;
 		x2 = r * 0.1; y2 = -r * 0.4; r2 = r /4;
 		x3 = r / 1.1; y3 = 0; r3 = r / 3.6;
 	}
 	void setsize(double Sz) {
-		sz = Sz; r = r * sz;
+		sz = Sz; r = r * sz; R = (int)round(R * sz);
 		x1 = x1 * sz; y1 = y1 * sz; r1 = r1 * sz;
 		x2 = x2 * sz; y2 = y2 * sz; r2 = r2 * sz;
 		x3 = x3 * sz; y3 = y3 * sz; r3 = r3 * sz;
@@ -395,27 +394,45 @@ public:
 	void setposition(double X, double Y) {
 		x = X; y = Y;
 	}
-	void settransparent(COLORREF Tsc, double Tsp) {
-		tsc = Tsc; tsp = Tsp;
+	void settransparent(double Tsp) {
+		tsp = Tsp;
 	}
 	void paint() {
+		if (fabs(tsp - 1.0) > 1e-4) {
+			beginPdot();
+			for (int dx = 0; dx <= R + R; dx++)
+				for (int dy = 0; dy <= R + R; dy++)
+					Gdot(x + dx - R, y + dy - R, pt[dx][dy][0], pt[dx][dy][1], pt[dx][dy][2]);
+			endPdot();
+		}
 		double ca = cos(angle), sa = sin(angle);
 		
-		setd(ps3, pw3, getrgbtsp(pc3, tsc, tsp));
-		setf(getrgbtsp(fc3, tsc, tsp));
+		setd(ps3, pw3, pc3);
+		setf(fc3);
 		double X3 = x3 * ca - y3 * sa, Y3 = x3 * sa + y3 * ca;
 		pcircle(x + X3, y + Y3, r3);
 
-		setd(ps1, pw1, getrgbtsp(pc1, tsc, tsp));
-		setf(getrgbtsp(fc1, tsc, tsp));
+		setd(ps1, pw1, pc1);
+		setf(fc1);
 		pcircle((int)round(x), (int)round(y), (int)round(r));
 		
-		setd(ps2, pw2, getrgbtsp(pc2, tsc, tsp));
-		setf(getrgbtsp(fc2, tsc, tsp));
+		setd(ps2, pw2, pc2);
+		setf(fc2);
 		double X1 = x1 * ca - y1 * sa, Y1 = x1 * sa + y1 * ca;
 		pcircle(x + X1, y + Y1, r1);
 		double X2 = x2 * ca - y2 * sa, Y2 = x2 * sa + y2 * ca;
 		pcircle(x + X2, y + Y2, r2);
+
+		if (fabs(tsp - 1.0) > 1e-4) {
+			beginPdot();
+			for (int dx = 0; dx <= R + R; dx++)
+				for (int dy = 0; dy <= R + R; dy++) {
+					BYTE r = 0, g = 0, b = 0; Gdot(x + dx - R, y + dy - R, r, g, b);
+					getrgbtsp(r, g, b, pt[dx][dy][0], pt[dx][dy][1], pt[dx][dy][2], tsp);
+					Pdot(x + dx - R, y + dy - R, r, g, b);
+				}
+			endPdot();
+		}
 	}
 }boss1demo;
 bool isobjid(int ID) {

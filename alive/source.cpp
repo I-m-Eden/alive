@@ -527,8 +527,11 @@ void paintmap() {
 		bulletdemo.paint();
 	}
 	if (ifboss1) {
-		if(boss1.second.tmp<400)boss1demo.settransparent(GRAY200, 1.0*(400 - boss1.second.tmp) / 400);
-		paintenemy(IDBOSS1, boss1.first - P + vector2(_winw / 2, _winh / 2), boss1.second.ang);
+		if (boss1.second.tmp < 400) {
+			boss1demo.settransparent(1.0*(400 - boss1.second.tmp) / 400);
+			paintenemy(IDBOSS1, boss1.first - P + vector2(_winw / 2, _winh / 2), boss1.second.ang);
+		}
+		else boss1demo.settransparent(1.0);
 	}
 }
 void paintmist(double p) {
@@ -865,7 +868,8 @@ void updateboss1() {
 	if (boss1stage.x > mx2 - _winw / 2)boss1stage.x -= 5;
 	if (boss1stage.y > my2 - _winh / 2)boss1stage.y -= 5;
 	boss1.second.life -= 0.003;
-	if (boss1.second.life < 0) {
+	if (boss1.second.life <= 1e-4) {
+		boss1.second.life = 0.0;
 		if (boss1.second.tmp < 400) {
 			boss1.second.tmp++;
 			boss1.second.ang += 1.0*boss1.second.tmp / 600;
@@ -874,21 +878,27 @@ void updateboss1() {
 		vector2 d = realp - boss1stage;
 		double nd = norm(d);
 		if (nd < 3) { boss1stage == realp; ifboss1 = 0; return; }
-		boss1stage = boss1stage + d * (3 / nd);
+		boss1stage = boss1stage + d * (3.0 / nd);
 		return;
 	}
-	int tick = boss1tick % 1500;
+	int tick = boss1tick % 1500, tick2 = boss1tick / 1500;
 	if (tick<500){
 		vector2 p = realp - boss1.first; double sa = boss1.second.ang;
 		double sb = atan2(p.y, p.x), sd = sb - sa;
 		while (sd < 0)sd += 2 * pi; while (sd > 2 * pi)sd -= 2 * pi;
+		if (sd > pi / 2 && sd < pi * 3 / 2) { if (sd < pi)sa += 0.05; else sa -= 0.05; }else
 		if (sd > 0.01&&sd < 2 * pi - 0.01) { if (sd < pi)sa += 0.01; else sa -= 0.01; }
 		while (sa < 0)sa += 2 * pi; while (sa > 2 * pi)sa -= 2 * pi;
 		double ang = boss1.second.ang = sa;
 		boss1.first = boss1.first + vector2(2.0 * cos(ang), 2.0 * sin(ang));
 	}else
 	if (tick<800){
-		if (rand() % 40 == 0) insertmpenemy(make_pair(boss1.first, enemyinf(IDENEMY2, boss1.second.ang)));
+		if (tick2 & 1) {
+			if (rand() % 60 == 0) insertmpenemy(make_pair(boss1.first, enemyinf(IDENEMY2, boss1.second.ang)));
+		}
+		else {
+			if (rand() % 24 == 0)insertmpenemy(make_pair(boss1.first, enemyinf(IDENEMY3, boss1.second.ang)));
+		}
 	}
 	if (norm(boss1.first - realp) <= getenemyR(IDBOSS1) + figuredemo.r1) {
 		HP -= 0.05; boss1.second.life -= 0.01;
@@ -920,7 +930,7 @@ void _restart1(bool ifload = 0) {
 	TBfp.text = "FP: "; TBfp.paint(); 
 	TBfp.x1 = (TBhp.tx2 - TBhp.tx1) - (TBfp.tx2 - TBfp.tx1); TBfp.paint();
 
-	//右上角~
+	//右上角
 	TBtree.init();
 	TBtree.setbox(0, 0, _winw, _winh);
 	TBtree.setstyle(rgb(50, 100, 0), 20, 0, "等线", lgright | lgtop);
@@ -928,6 +938,13 @@ void _restart1(bool ifload = 0) {
 	TBstone = TBtree;
 	TBstone.setbox(0, TBtree.ty2, _winw, _winh);
 	TBstone.text = ""; TBstone.paint();
+
+	//正上方
+	textbox TBb1hp;
+	TBb1hp.init();
+	TBb1hp.setbox(0, 0, _winw, _winh);
+	TBb1hp.setstyle(GRAY80, 20, 0, "等线", lgtop | lgcenterhorizontal);
+	TBb1hp.text = ""; TBb1hp.paint();
 	
 	//载入存档或初始化变量
 	if (ifload)loadgame();else initgame();
@@ -1006,14 +1023,14 @@ void _restart1(bool ifload = 0) {
 			if (rand() % 10 == 0)produceobj(IDSTONE);
 		}
 		if (currenttick >= 1500 && currenttick <= 8000) {
-			if (rand() % 120 == 0)produceobj(IDENEMY1);
-			if (rand() % 80 == 0)produceobj(IDENEMY2);
+			if (rand() % 130 == 0)produceobj(IDENEMY1);
+			if (rand() % 90 == 0)produceobj(IDENEMY2);
 			if (rand() % 4000 == 0)produceobj(IDENEMY4);
 		}
 		if (currenttick >= 8000 && currenttick <= 16000) {
 			if (rand() % 800 == 0)produceobj(IDENEMY1);
 			if (rand() % 700 == 0)produceobj(IDENEMY2);
-			if (rand() % 6000 == 0)produceobj(IDENEMY4);
+			if (rand() % 8000 == 0)produceobj(IDENEMY4);
 		}
 		if (currenttick == 16000) {
 			produceboss1();
@@ -1116,6 +1133,12 @@ void _restart1(bool ifload = 0) {
 		setd(0, 0, RGB(70, 130, 200)); dbar(TBfp.tx2, TBfp.ty1, TBfp.tx2 + 200, TBfp.ty2);
 		setf(RGB(70,130,200)); fbar(TBfp.tx2, TBfp.ty1, TBfp.tx2 + (int)round(FP) * 2, TBfp.ty2);
 		TBfp.text = snfp.c_str(); TBfp.paint();
+		if (ifboss1) {
+			string snb1hp = "BOSS HP: "; snb1hp += constr((int)round(boss1.second.life));
+			setd(0, 0, RGB(150, 10, 0)); dbar(200, TBb1hp.ty1, 600, TBb1hp.ty2);
+			setf(RGB(150, 10, 0)); fbar(200, TBb1hp.ty1, 200 + (int)round(boss1.second.life * 400 / 30), TBb1hp.ty2);
+			TBb1hp.text = snb1hp.c_str(); TBb1hp.paint();
+		}
 
 #ifdef DEBUGGING
 		textbox tbtk;
