@@ -90,6 +90,7 @@ bool shoppossession[SHOPN];
 double HP, FP;
 int currenttick;
 bool ifboss1; int boss1tick; pve boss1; vector2 boss1stage;
+COLORREF backgroundColor;
 
 linkst<p_pvi> mpobj, mptch;
 p_pvi gainobj; double gainpct;
@@ -309,6 +310,7 @@ void initgame() {
 	shoppossession[0] = 1;
 	currenttick = 0;
 	ifboss1 = 0;
+	backgroundColor = GRAY200;
 }
 
 void loadgame()
@@ -350,6 +352,7 @@ void loadgame()
 		fin >> boss1.first.x >> boss1.first.y;
 		fin >> boss1.second.ID >> boss1.second.ang >> boss1.second.life;
 	}
+	fin >> backgroundColor;
 	fin.close();
 }
 
@@ -387,6 +390,7 @@ void savegame()
 		fout << boss1.first.x << " " << boss1.first.y << endl;
 		fout << boss1.second.ID << " " << boss1.second.ang << " " << boss1.second.life << endl;
 	}
+	fout << backgroundColor << endl;
 	fout.close();
 }
 
@@ -448,7 +452,8 @@ void paintgaining(p_pvi obj, double pct) {
 	vector2 p = (*obj).s.first - P + vector2(_winw / 2, _winh / 2);
 	int x3 = (int)round(p.x + 1), y3 = (int)round(p.y);
 	int x4 = (int)round(p.x + cos(pct) * 100), y4 = (int)round(p.y - sin(pct) * 100);
-	if (name == IDTREE || name == IDTREE2) setf(0x68B11F);
+	if (name == IDTREE) setf(RGB(70,180,60));
+	if (name == IDTREE2) setf(RGB(100,160,0));
 	if (name == IDSTONE) setf(0x727272);
 	double demoR = getobjR(name);
 	fpie((int)round(p.x - demoR), (int)round(p.y - demoR), 
@@ -815,8 +820,8 @@ void updateQ(bool isQ) {
 			if (gainobj->s.second == IDTREE2) FP -= 2;
 			if (gainobj->s.second == IDSTONE) FP -= 3;
 			if (gainobj->s.second == IDTREE) number_wood++, mist += 200;
-			if (gainobj->s.second == IDTREE2) number_wood += 2, mist += 180;
-			if (gainobj->s.second == IDSTONE) number_stone++, mist += 500;
+			if (gainobj->s.second == IDTREE2) number_wood += 2, mist += 240;
+			if (gainobj->s.second == IDSTONE) number_stone++, mist += 480;
 			erasemp(gainobj);
 			gainobj = nullptr; gainpct = 0;
 		}
@@ -873,6 +878,11 @@ void updateboss1() {
 		if (boss1.second.tmp < 400) {
 			boss1.second.tmp++;
 			boss1.second.ang += 1.0*boss1.second.tmp / 600;
+			double pt = 1.0*boss1.second.tmp / 400;
+			double dR = pt*(GetRValue(GRAYGREEN) - GetRValue(GRAY200)) + 200;
+			double dG = pt*(GetGValue(GRAYGREEN) - GetGValue(GRAY200)) + 200;
+			double dB = pt*(GetBValue(GRAYGREEN) - GetBValue(GRAY200)) + 200;
+			backgroundColor = RGB((int)round(dR), (int)round(dG), (int)round(dB));
 			return;
 		}
 		vector2 d = realp - boss1stage;
@@ -908,6 +918,15 @@ void updateboss1() {
 		if (norm(p) > getenemyR(IDBOSS1) + bulletdemo.r)continue;
 		boss1.second.life -= 1;
 		it = it->L; mpbullet.erase(it->R);
+	}
+}
+void updatempdisappear(int id, int pt) {
+	vector2 P = realp; if (ifboss1)P = boss1stage;
+	for (p_pvi i = mp.begin(); !i->isend; i = i->R) {
+		vector2 p = i->s.first - P + vector2(_winw / 2, _winh / 2); int name = i->s.second;
+		if (name == id && rand() % pt == 0 && !sighted(p, name)) {
+			i = i->L; mp.erase(i->R); continue; 
+		}
 	}
 }
 void _restart1(bool ifload = 0) {
@@ -1018,22 +1037,34 @@ void _restart1(bool ifload = 0) {
 		}
 
 		//随机生成地图元素
-		if (tick % 50 == 0) {
-			if (rand() % 20 == 0)produceobj(IDTREE);
-			if (rand() % 10 == 0)produceobj(IDSTONE);
+		if (currenttick >= 0 && currenttick <= 16000) {
+			if (tick % 50 == 0) {
+				if (rand() % 20 == 0)produceobj(IDTREE);
+				if (rand() % 10 == 0)produceobj(IDSTONE);
+			}
+			if (currenttick >= 1500 && currenttick <= 8000) {
+				if (rand() % 130 == 0)produceobj(IDENEMY1);
+				if (rand() % 90 == 0)produceobj(IDENEMY2);
+				if (rand() % 4000 == 0)produceobj(IDENEMY4);
+			}
+			if (currenttick >= 8000 && currenttick <= 16000) {
+				if (rand() % 800 == 0)produceobj(IDENEMY1);
+				if (rand() % 700 == 0)produceobj(IDENEMY2);
+				if (rand() % 8000 == 0)produceobj(IDENEMY4);
+			}
+			if (currenttick == 16000) {
+				produceboss1();
+			}
 		}
-		if (currenttick >= 1500 && currenttick <= 8000) {
-			if (rand() % 130 == 0)produceobj(IDENEMY1);
-			if (rand() % 90 == 0)produceobj(IDENEMY2);
-			if (rand() % 4000 == 0)produceobj(IDENEMY4);
-		}
-		if (currenttick >= 8000 && currenttick <= 16000) {
-			if (rand() % 800 == 0)produceobj(IDENEMY1);
-			if (rand() % 700 == 0)produceobj(IDENEMY2);
-			if (rand() % 8000 == 0)produceobj(IDENEMY4);
-		}
-		if (currenttick == 16000) {
-			produceboss1();
+		if (currenttick >= 16000) {
+			if (currenttick <= 18000) {
+				if (rand() % 10 == 0)produceobj(IDTREE2);
+				updatempdisappear(IDTREE, 1200);
+			}
+			if (rand() % 50 == 0) {
+				if (rand() % 8 == 0)produceobj(IDTREE);
+				if (rand() % 6 == 0)produceobj(IDSTONE);
+			}
 		}
 
 #ifdef DEBUGGING
@@ -1099,12 +1130,12 @@ void _restart1(bool ifload = 0) {
 #endif
 
 		//开始绘制地图
-		clearscreen(GRAY200);
+		clearscreen(backgroundColor);
 		paintmap();
 		if (ifboss1)figure.setposition(realp - boss1stage+vector2(_winw/2,_winh/2));
 		else figure.setposition(_winw / 2, _winh / 2);
 		figure.paint();
-		paintmist(min(0.4, 1.0*mist / 100000) * sin(2 * pi*tick / 500) + min(0.4, 2.0*mist / 100000));
+		paintmist(min(0.4, 1.0*mist / 130000) * sin(2 * pi*tick / 500) + min(0.8, 2.0*mist / 130000));
 
 #ifdef DEBUGGING
 		test3 += (GetTickCount() - testtick);
@@ -1136,7 +1167,7 @@ void _restart1(bool ifload = 0) {
 		if (ifboss1) {
 			string snb1hp = "BOSS HP: "; snb1hp += constr((int)round(boss1.second.life));
 			setd(0, 0, RGB(150, 10, 0)); dbar(200, TBb1hp.ty1, 600, TBb1hp.ty2);
-			setf(RGB(150, 10, 0)); fbar(200, TBb1hp.ty1, 200 + (int)round(boss1.second.life * 400 / 30), TBb1hp.ty2);
+			setf(RGB(150, 10, 0)); fbar(200, TBb1hp.ty1, 200 + (int)round(boss1.second.life * 400 / getenemylife(IDBOSS1)), TBb1hp.ty2);
 			TBb1hp.text = snb1hp.c_str(); TBb1hp.paint();
 		}
 

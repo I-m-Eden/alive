@@ -66,8 +66,8 @@ public:
 	double r;
 	treeimage() {
 		ps = 0; pw = 0; pc = BLACK;
-		fc = 0x85DA2F;
-		r = 50;
+		fc = RGB(90,220,90);
+		r = 46;
 		x = y = 0;
 	}
 	void setposition(double X, double Y) {
@@ -461,7 +461,7 @@ double getenemylife(int ID) {
 	if (ID == IDENEMY2) return 1;
 	if (ID == IDENEMY3) return 1;
 	if (ID == IDENEMY4) return 2;
-	if (ID == IDBOSS1)return 30;
+	if (ID == IDBOSS1)return 50;
 	return -1;
 }
 void paintenemy(int ID, vector2 p, double ang) {
