@@ -9,7 +9,7 @@
 //	用Visual Studio 2017编译之前注意事项：
 //	项目属性->c/c++->预处理器->预处理器定义 中添加：
 //	_CRT_SECURE_NO_DEPRECATE
-//	_CRT_NONSTDC_NO_DEPRECATEaa
+//	_CRT_NONSTDC_NO_DEPRECATE
 //	项目属性->c/c++->代码生成->运行库 修改为 "多线程调试 (/MTd)"
 //
 
@@ -1209,81 +1209,70 @@ void _restart1(bool ifload = 0) {
 
 BYTE*rcData;
 tagRGBTRIPLE arrbitmap[800][600]; bool flagarr;
-int Sr[800][600], Sg[800][600], Sb[800][600];
+intRGBTRIPLE Sc[800][600];
+intRGBTRIPLE Spb[800][600];
+intRGBTRIPLE SPb[800][600];
+double Sq[800][600]; BYTE Sqp[800][600];
 
 void initrcData() {
 	if (flagarr)return; flagarr = 1;
 	string fileinfo = UseCustomResource(IDB_BITMAP1, _hinst, rcData);
-	getarrbitmap(arrbitmap , rcData, 800, 600);
+	int w = 800, h = 600;
+	getarrbitmap(arrbitmap , rcData, w, h);
 	delete[] rcData;
-	Sr[0][0] = arrbitmap[0][0].rgbtRed;
-	Sg[0][0] = arrbitmap[0][0].rgbtGreen;
-	Sb[0][0] = arrbitmap[0][0].rgbtBlue;
-	for (int i = 1; i < 800; i++) Sr[i][0] = Sr[i - 1][0] + arrbitmap[i][0].rgbtRed;
-	for (int i = 1; i < 800; i++) Sg[i][0] = Sg[i - 1][0] + arrbitmap[i][0].rgbtGreen;
-	for (int i = 1; i < 800; i++) Sb[i][0] = Sb[i - 1][0] + arrbitmap[i][0].rgbtBlue;
-	for (int i = 1; i < 600; i++) Sr[0][i] = Sr[0][i - 1] + arrbitmap[0][i].rgbtRed;
-	for (int i = 1; i < 600; i++) Sg[0][i] = Sg[0][i - 1] + arrbitmap[0][i].rgbtGreen;
-	for (int i = 1; i < 600; i++) Sb[0][i] = Sb[0][i - 1] + arrbitmap[0][i].rgbtBlue;
-	for (int i = 1; i < 800; i++)
-		for (int j = 1; j < 600; j++)
-			Sr[i][j] = Sr[i - 1][j] + Sr[i][j - 1] - Sr[i - 1][j - 1] + arrbitmap[i][j].rgbtRed;
-	for (int i = 1; i < 800; i++)
-		for (int j = 1; j < 600; j++)
-			Sg[i][j] = Sg[i - 1][j] + Sg[i][j - 1] - Sg[i - 1][j - 1] + arrbitmap[i][j].rgbtGreen;
-	for (int i = 1; i < 800; i++)
-		for (int j = 1; j < 600; j++)
-			Sb[i][j] = Sb[i - 1][j] + Sb[i][j - 1] - Sb[i - 1][j - 1] + arrbitmap[i][j].rgbtBlue;
+	ref(i, 0, w - 1) {
+		Sc[i][0] = arrbitmap[i][0];
+		ref(j, 1, h - 1)Sc[i][j] = Sc[i][j - 1] + arrbitmap[i][j];
+		if (i > 0)ref(j, 0, h - 1)Sc[i][j] = Sc[i][j] + Sc[i - 1][j];
+	}
+	ref(i, 0, w - 1)ref(j, 0, h - 1)Sq[i][j] = 1.0 - 1.0*max(j - h / 2, 0) / h;
+	ref(i, 0, w - 1)ref(j, 0, h - 1)Sqp[i][j] = 0;
+	ref(i, 0, w - 1)ref(j, 0, h - 1) {
+		int p = 4 * j / h + 2;
+		intRGBTRIPLE s0, s1, s2, s3, s4;
+		int x1 = max(i - p, 0) - 1, x2 = min(i + p, w - 1);
+		int y1 = max(j - p, 0) - 1, y2 = min(j + p, h - 1);
+		s1 = Sc[x2][y2];
+		s2 = (y1<0) ? s0 : Sc[x2][y1];
+		s3 = (x1<0) ? s0 : Sc[x1][y2];
+		s4 = (x1<0 || y1<0) ? s0 : Sc[x1][y1];
+		Spb[i][j] = (s1 + s4 - s2 - s3) / ((x2 - x1)*(y2 - y1));
+		p = 10;
+		x1 = max(i - p, 0) - 1, x2 = min(i + p, w - 1);
+		y1 = max(j - p, 0) - 1, y2 = min(j + p, h - 1);
+		s1 = Sc[x2][y2];
+		s2 = (y1<0) ? s0 : Sc[x2][y1];
+		s3 = (x1<0) ? s0 : Sc[x1][y2];
+		s4 = (x1<0 || y1<0) ? s0 : Sc[x1][y1];
+		SPb[i][j] = (s1 + s4 - s2 - s3) / ((x2 - x1)*(y2 - y1));
+	}
 }
 
 void paintbmp(int x, int y, int X, int Y) {
-	if (!flagarr) initrcData();
+	initrcData();
 	beginPdot();
 	int w = 800, h = 600;
+	if (x < 0)x = 0; if (x >= w)x = w - 1;
+	if (y < 0)y = 0; if (y >= h)y = h - 1;
 	ref(i, x, X)ref(j, y, Y) {
-		int r = 0, g = 0, b = 0, t = 0;
-		int p = 4 * j / h + 2;
-
-		int s1, s2, s3, s4;
-		s1 = Sr[min(i + p, w - 1)][min(j + p, h - 1)], s2 = ((j <= p) ? 0 : Sr[min(i + p, w - 1)][max(j - p, 0) - 1]);
-		s3 = ((i <= p) ? 0 : Sr[max(i - p, 0) - 1][min(j + p, h - 1)]), s4 = ((i <= p || j <= p) ? 0 : Sr[max(i - p, 0) - 1][max(j - p, 0) - 1]);
-		r = s1 - s2 - s3 + s4;
-		s1 = Sg[min(i + p, w - 1)][min(j + p, h - 1)], s2 = ((j <= p) ? 0 : Sg[min(i + p, w - 1)][max(j - p, 0) - 1]);
-		s3 = ((i <= p) ? 0 : Sg[max(i - p, 0) - 1][min(j + p, h - 1)]), s4 = ((i <= p || j <= p) ? 0 : Sg[max(i - p, 0) - 1][max(j - p, 0) - 1]);
-		g = s1 - s2 - s3 + s4;
-		s1 = Sb[min(i + p, w - 1)][min(j + p, h - 1)], s2 = ((j <= p) ? 0 : Sb[min(i + p, w - 1)][max(j - p, 0) - 1]);
-		s3 = ((i <= p) ? 0 : Sb[max(i - p, 0) - 1][min(j + p, h - 1)]), s4 = ((i <= p || j <= p) ? 0 : Sb[max(i - p, 0) - 1][max(j - p, 0) - 1]);
-		b = s1 - s2 - s3 + s4;
-
-		t = (min(i + p, w - 1) - max(i - p, 0) + 1)*(min(j + p, h - 1) - max(j - p, 0) + 1);
-
-		r /= t; g /= t; b /= t;
-		double q = 1.0*max(j - 300, 0) / 600;
-		r = (int)round((1 - q)*r + q * 200); g = (int)round((1 - q)*g + q * 200); b = (int)round((1 - q)*b + q * 200);
-		Pdot(i, j, r, g, b);
+		intRGBTRIPLE s0 = Spb[i][j];
+		double q = Sq[i][j] * Sqp[i][j] / 100;
+		s0.r = (int)round(q*s0.r + (1.0-q) * 200);
+		s0.g = (int)round(q*s0.g + (1.0-q) * 200); 
+		s0.b = (int)round(q*s0.b + (1.0-q) * 200);
+		Pdot(i, j, s0.r, s0.g, s0.b);
 	}
 	endPdot();
 }
 void Paintbmp(int x, int y, int X, int Y) {
-	int w = 800, h = 600;
-	if (!flagarr) initrcData();
+	initrcData();
 	beginPdot();
+	int w = 800, h = 600;
+	if (x < 0)x = 0; if (x >= w)x = w - 1;
+	if (y < 0)y = 0; if (y >= h)y = h - 1;
 	ref(i, x, X)ref(j, y, Y) {
-		int r, g, b, t;
-		int p = 10;
-		int s1, s2, s3, s4;
-		s1 = Sr[min(i + p, w - 1)][min(j + p, h - 1)], s2 = ((j <= p) ? 0 : Sr[min(i + p, w - 1)][max(j - p, 0) - 1]);
-		s3 = ((i <= p) ? 0 : Sr[max(i - p, 0) - 1][min(j + p, h - 1)]), s4 = ((i <= p || j <= p) ? 0 : Sr[max(i - p, 0) - 1][max(j - p, 0) - 1]);
-		r = s1 - s2 - s3 + s4;
-		s1 = Sg[min(i + p, w - 1)][min(j + p, h - 1)], s2 = ((j <= p) ? 0 : Sg[min(i + p, w - 1)][max(j - p, 0) - 1]);
-		s3 = ((i <= p) ? 0 : Sg[max(i - p, 0) - 1][min(j + p, h - 1)]), s4 = ((i <= p || j <= p) ? 0 : Sg[max(i - p, 0) - 1][max(j - p, 0) - 1]);
-		g = s1 - s2 - s3 + s4;
-		s1 = Sb[min(i + p, w - 1)][min(j + p, h - 1)], s2 = ((j <= p) ? 0 : Sb[min(i + p, w - 1)][max(j - p, 0) - 1]);
-		s3 = ((i <= p) ? 0 : Sb[max(i - p, 0) - 1][min(j + p, h - 1)]), s4 = ((i <= p || j <= p) ? 0 : Sb[max(i - p, 0) - 1][max(j - p, 0) - 1]);
-		b = s1 - s2 - s3 + s4;
-		t = (min(i + p, w - 1) - max(i - p, 0) + 1)*(min(j + p, h - 1) - max(j - p, 0) + 1);
-		r /= t; g /= t; b /= t;
-		Pdot(i, j, r, g, b);
+		intRGBTRIPLE s0 = SPb[i][j];
+		Pdot(i, j, s0.r, s0.g, s0.b);
 	}
 	endPdot();
 }
@@ -1398,8 +1387,6 @@ void _restart() {
 	}
 }
 void _main() {
-
-#ifndef DEBUGGING
 	textbox t;
 	t.init();
 	t.text = "ALIVE";
@@ -1411,21 +1398,47 @@ void _main() {
 		t.textcolor = rgb(255 - i, 255 - i, 255 - i);
 		t.paint();
 		flushpaint();
-		delay(5);
+		delay(3);
 	}
 	ref(i, 55, 200) {
 		t.textcolor = rgb(i, i, i);
 		t.paint();
 		flushpaint();
-		delay(10);
+		delay(6);
 	}
 	delay(100);
-#endif
+
+	clearscreen(GRAY200);
+	ref(ti, 1, 20) {
+		int x, y;
+		while (1) {
+			x = rand() % _winw, y = rand() % _winh;
+			if (Sqp[x][y] == 0)break;
+		}
+		for(int r=0;r<125;r+=5) {
+			ref(i, x - r, x + r)if (i >= 0 && i < _winw)
+				ref(j, y - r, y + r)if (j >= 0 && j < _winh)
+				if ((i - x)*(i - x) + (j - y)*(j - y) <= r * r && Sqp[i][j] < 100)
+					Sqp[i][j] += 4;
+			paintbmp(x - r, y - r, x + r, y + r);
+			flushpaint();
+			peekmsg(); delay(1);
+		}
+		peekmsg(); delay(1);
+	}
+	while(1) {
+		bool flag = 0;
+		ref(i, 0, _winw - 1)ref(j, 0, _winh - 1)
+			if (Sqp[i][j] < 100)Sqp[i][j] += 4, flag=1;
+		if (!flag)break;
+		paintbmp(0, 0, _winw - 1, _winh - 1);
+		flushpaint();
+		peekmsg(); delay(1);
+	}
 
 position1:
 	flushmouse();
-	clearscreen(GRAY200);
-	paintbmp(0, 0, _winw-1,_winh-1);
+	paintbmp(0, 0, _winw - 1, _winh - 1);
 
 	textbox t1, t2, t3;
 	t1.init();

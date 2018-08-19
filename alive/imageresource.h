@@ -10,6 +10,7 @@ const int IDENEMY1 = 3;
 const int IDENEMY2 = 4;
 const int IDENEMY3 = 6;
 const int IDENEMY4 = 7;
+const int IDENEMY5 = 10;
 const int IDBOSS1 = 8;
 class figureimage {
 private:

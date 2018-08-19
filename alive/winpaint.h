@@ -356,24 +356,24 @@ void beginPdot(bool flag = 0) {
 	else GetDIBits(_hDCMem, _hBMMem, 0, _bInfo.bmiHeader.biHeight, _pData, &_bInfo, DIB_RGB_COLORS);
 }
 COLORREF Gdot(int x, int y) {
-	if (x < 0 || x >= _winw || y<0 || y>_winh)return NULL;
+	if (x < 0 || x >= _winw || y < 0 || y >= _winh)return NULL;
 	int t = (_winh - 1 - y) * _nLnBytes + x * 3;
 	return (*(_pData + t + 2) | (*(_pData + t + 1) << 8) | (*(_pData + t + 0) << 16));
 }
 void Gdot(int x, int y, BYTE&r, BYTE&g, BYTE&b) {
-	if (x < 0 || x >= _winw || y<0 || y>_winh)return;
+	if (x < 0 || x >= _winw || y < 0 || y >= _winh)return;
 	int t = (_winh - 1 - y) * _nLnBytes + x * 3;
 	r = *(_pData + t + 2); g = *(_pData + t + 1); b = *(_pData + t + 0);
 }
 void Pdot(int x, int y, BYTE r, BYTE g, BYTE b) {
-	if (x < 0 || x >= _winw || y<0 || y>_winh)return;
+	if (x < 0 || x >= _winw || y < 0 || y >= _winh)return;
 	int t = (_winh - 1 - y) * _nLnBytes + x * 3;
 	*(_pData + t + 0) = b;
 	*(_pData + t + 1) = g;
 	*(_pData + t + 2) = r;
 }
 void Pdot(int x, int y, COLORREF c) {
-	if (x < 0 || x >= _winw || y<0 || y>_winh)return;
+	if (x < 0 || x >= _winw || y < 0 || y >= _winh)return;
 	int t = (_winh - 1 - y) * _nLnBytes + x * 3;
 	*(_pData + t + 0) = c >> 16 & 0xff;
 	*(_pData + t + 1) = c >> 8 & 0xff;

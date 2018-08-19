@@ -1,5 +1,19 @@
 #pragma once
 #include "head.h"
+struct intRGBTRIPLE {
+	int r, g, b;
+	intRGBTRIPLE() { r = g = b = 0; }
+	intRGBTRIPLE(int R, int G, int B) { r = R, g = G, b = B; }
+	intRGBTRIPLE(tagRGBTRIPLE s) { r = s.rgbtRed, g = s.rgbtGreen, b = s.rgbtBlue; }
+	void operator =(tagRGBTRIPLE s) { r = s.rgbtRed; g = s.rgbtGreen; b = s.rgbtBlue; }
+};
+intRGBTRIPLE operator+(intRGBTRIPLE a, intRGBTRIPLE b) { return intRGBTRIPLE(a.r + b.r, a.g + b.g, a.b + b.b); }
+intRGBTRIPLE operator+(intRGBTRIPLE a, tagRGBTRIPLE b) { return a + (intRGBTRIPLE)b; }
+intRGBTRIPLE operator-(intRGBTRIPLE a, intRGBTRIPLE b) { return intRGBTRIPLE(a.r - b.r, a.g - b.g, a.b - b.b); }
+intRGBTRIPLE operator-(intRGBTRIPLE a, tagRGBTRIPLE b) { return a - (intRGBTRIPLE)b; }
+intRGBTRIPLE operator*(intRGBTRIPLE a, int b) { return intRGBTRIPLE(a.r * b, a.g * b, a.b * b); }
+intRGBTRIPLE operator/(intRGBTRIPLE a, int b) { return intRGBTRIPLE(a.r / b, a.g / b, a.b / b); }
+
 string UseCustomResource(int rcId, HINSTANCE hinst, BYTE* &rcData) {
 	HRSRC hRsrc = FindResource(hinst, MAKEINTRESOURCE(rcId), RT_BITMAP);
 	if (NULL == hRsrc) return "rcError1";
