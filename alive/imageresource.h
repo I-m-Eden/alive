@@ -11,6 +11,8 @@ const int IDENEMY2 = 4;
 const int IDENEMY3 = 6;
 const int IDENEMY4 = 7;
 const int IDENEMY5 = 10;
+const int IDBULLET = 11;
+const int IDBULLET2 = 12;
 const int IDBOSS1 = 8;
 class figureimage {
 private:
@@ -264,6 +266,25 @@ public:
 		fcircle((int)round(x), (int)round(y), (int)round(r));
 	}
 }bulletdemo;
+class bullet2image {
+private:
+	double x, y;
+public:
+	COLORREF fc;
+	double r;
+	bullet2image() {
+		fc = RGB(40, 160, 100);
+		r = 4;
+		x = y = 0;
+	}
+	void setposition(double X, double Y) {
+		x = X; y = Y;
+	}
+	void paint() {
+		setf(fc);
+		fcircle((int)round(x), (int)round(y), (int)round(r));
+	}
+}bullet2demo;
 class enemy2image {
 private:
 	int Sn; POINT S[10];
@@ -352,6 +373,54 @@ public:
 		pcircle((int)round(x+ca*3), (int)round(y+sa*3), (int)round(r2));
 	}
 }enemy4demo;
+class enemy5image {
+private:
+	void drawellipse(COLORREF fc, double x1, double y1, double x2, double y2, int d) {
+		int varX = (int)round((sqrt(d*d - (y2 - y1)*(y2 - y1)) - fabs(x2 - x1) / 2));
+		int XL = (int)round(min(x1, x2)) - varX, XR = (int)round(max(x1, x2)) + varX;
+		int varY = (int)round((sqrt(d*d - (x2 - x1)*(x2 - x1)) - fabs(y2 - y1) / 2));
+		int YL = (int)round(min(y1, y2)) - varY, YR = (int)round(max(y1, y2)) + varY;
+		for (int X = XL; X <= XR; ++X)for (int Y = YL; Y <= YR; ++Y) {
+			int dd = (int)round(sqrt((X - x1)*(X - x1) + (Y - y1)*(Y - y1)) + sqrt((X - x2)*(X - x2) + (Y - y2)*(Y - y2)));
+			if (dd <= d)pdot(X, Y, fc);
+		}
+	}
+	double x11, x12, y11, y12;
+	int ps2, pw2; COLORREF pc2; double x2, y2;
+	double x, y;
+	double sz;
+public:
+	COLORREF fc1, fc2;
+	double angle;
+	double r, d1, r2;
+	enemy5image() {
+		d1 = 60; r2 = 5; r = 20;
+		ps2 = 0; pw2 = 0; pc2 = rgb(110, 110, 180);
+		fc1 = rgb(0, 200, 200); fc2 = rgb(110, 110, 180);
+		angle = 0; setsize(1.0);
+		x11 = 0; y11 = -25; x12 = 0; y12 = 25;
+		x2 = 0; y2 = -13;
+	}
+	void setsize(double Sz) {
+		sz = Sz; r = r * sz; d1 = d1 * sz; r2 = r2 * sz;
+		x11 *= sz; x12 *= sz; y11 *= sz; y12 *= sz;
+		x2 *= sz; y2 *= sz;
+	}
+	void setposition(double X, double Y) {
+		x = X; y = Y;
+	}
+	void paint() {
+		double ca = cos(angle), sa = sin(angle);
+		double X11 = x11 * ca - y11 * sa, Y11 = x11 * sa + y11 * ca;
+		double X12 = x12 * ca - y12 * sa, Y12 = x12 * sa + y12 * ca;
+		drawellipse(fc1, X11 + x, Y11 + y, X12 + x, Y12 + y, d1);
+		setd(ps2, pw2, pc2); setf(fc2);
+		double X21 = x2 * ca - y2 * sa, Y21 = x2 * sa + y2 * ca;
+		double X22 = -X21, Y22 = -Y21;
+		pcircle((int)round(X21 + x), (int)round(Y21 + y), r2);
+		pcircle((int)round(X22 + x), (int)round(Y22 + y), r2);
+	}
+}enemy5demo;
 class boss1image {
 private:
 	BYTE pt[130][130][3];
@@ -436,17 +505,24 @@ public:
 		}
 	}
 }boss1demo;
+bool isbulletid(int ID) {
+	return (ID == IDBULLET || ID == IDBULLET2);
+}
+bool isenemybulletid(int ID) {
+	return (ID == IDBULLET2);
+}
 bool isobjid(int ID) {
 	return (ID == IDTREE || ID == IDSTONE || ID == IDFRUIT || ID==IDTREE2);
 }
 bool isenemyid(int ID) /* without boss */{
-	return (ID == IDENEMY1 || ID == IDENEMY2 || ID == IDENEMY3 || ID == IDENEMY4); 
+	return (ID == IDENEMY1 || ID == IDENEMY2 || ID == IDENEMY3 || ID == IDENEMY4 || ID == IDENEMY5);
 }
 double getenemyatk(int ID)/* without boss */ {
 	if (ID == IDENEMY1) return 5;
 	if (ID == IDENEMY2) return 3;
 	if (ID == IDENEMY3) return 1;
 	if (ID == IDENEMY4) return 2;
+	if (ID == IDENEMY5) return 4;
 	return -1;
 }
 double getenemyR(int ID) {
@@ -455,6 +531,7 @@ double getenemyR(int ID) {
 	if (ID == IDENEMY3)return enemy3demo.r;
 	if (ID == IDENEMY4)return enemy4demo.r;
 	if (ID == IDBOSS1)return boss1demo.r;
+	if (ID == IDENEMY5)return enemy5demo.r;
 	return -1;
 }
 double getenemylife(int ID) {
@@ -463,6 +540,7 @@ double getenemylife(int ID) {
 	if (ID == IDENEMY3) return 1;
 	if (ID == IDENEMY4) return 2;
 	if (ID == IDBOSS1)return 50;
+	if (ID == IDENEMY5)return 3;
 	return -1;
 }
 void paintenemy(int ID, vector2 p, double ang) {
@@ -491,6 +569,11 @@ void paintenemy(int ID, vector2 p, double ang) {
 		boss1demo.angle = ang;
 		boss1demo.paint();
 	}
+	if (ID == IDENEMY5) {
+		enemy5demo.setposition(p.x, p.y);
+		enemy5demo.angle = ang;
+		enemy5demo.paint();
+	}
 }
 double getobjR(int ID) {
 	if (ID == IDTREE)return treedemo.r;
@@ -499,5 +582,32 @@ double getobjR(int ID) {
 	if (ID == IDTREE2)return tree2demo.r;
 	return -1;
 }
+double getbulletR(int ID) {
+	if (ID == IDBULLET)return bulletdemo.r;
+	if (ID == IDBULLET2)return bullet2demo.r;
+	return -1;
+}
+double getenemybulletvelocity(int ID) {
+	if (ID == IDBULLET2)return 5;
+	return -1;
+}
+double getenemybulletrange(int ID) {
+	if (ID == IDBULLET2)return 800;
+	return -1;
+}
+double getenemybulletatk(int ID) {
+	if (ID == IDBULLET2)return 1;
+	return -1;
+}
+void paintbullet(int ID, vector2 p) {
+	if (ID == IDBULLET) {
+		bulletdemo.setposition(p.x, p.y);
+		bulletdemo.paint();
+	}
+	if (ID == IDBULLET2) {
+		bullet2demo.setposition(p.x, p.y);
+		bullet2demo.paint();
+	}
+}
 const double maxobjR = max(max(max(treedemo.r, stonedemo.r), fruitdemo.r),tree2demo.r);
-const double maxenemyR /* without boss */ = max(max(enemy1demo.r, enemy2demo.r), max(enemy3demo.r, enemy4demo.r));
+const double maxenemyR /* without boss */ = max(max(max(enemy1demo.r, enemy2demo.r), max(enemy3demo.r, enemy4demo.r)), enemy5demo.r);
