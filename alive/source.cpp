@@ -562,10 +562,10 @@ void paintmap() {
 void paintmist(double p) {
 	if (p > 1.0)p = 1.0;
 	beginPdot();
-	double q = 1.0 - p; p = p * 150;
+	int a = (int)round((1.0-p)*128);
+	byte b = (BYTE)round(p * 150);
 	for (int i = _pDataSize - 1; i >= 0; --i) {
-		BYTE&P = _pData[i];
-		P = (BYTE)(q*P + p);
+		BYTE&P = _pData[i]; P = (BYTE)(a*P >> 7) + b;
 	}
 	endPdot();
 }
@@ -1171,11 +1171,11 @@ void _restart1(bool ifload = 0) {
 
 		//WSAD移动，调整加速度
 		vector2 a;
-		if (GetAsyncKeyState('W') & 0x8000)a.y -= 0.23;
-		if (GetAsyncKeyState('S') & 0x8000)a.y += 0.23;
-		if (GetAsyncKeyState('A') & 0x8000)a.x -= 0.23;
-		if (GetAsyncKeyState('D') & 0x8000)a.x += 0.23;
-		if (a.x != 0 || a.y != 0)a = a * (1.0 / norm(a));
+		if (GetAsyncKeyState('W') & 0x8000)a.y -= 0.2;
+		if (GetAsyncKeyState('S') & 0x8000)a.y += 0.2;
+		if (GetAsyncKeyState('A') & 0x8000)a.x -= 0.2;
+		if (GetAsyncKeyState('D') & 0x8000)a.x += 0.2;
+		if (a.x != 0 || a.y != 0)a = a * (0.4 / norm(a));
 		if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) {
 			savegame(); break;
 		}
@@ -1184,7 +1184,7 @@ void _restart1(bool ifload = 0) {
 		realv = realv + a;
 		double nv = norm(realv);
 		if (nv > velocity) realv = realv * (velocity / norm(realv)), nv = velocity;
-		if (nv < 0.1)realv = { 0,0 }, nv = 0; else realv = realv * ((nv - 0.2) / nv);
+		if (nv < 0.1)realv = { 0,0 }, nv = 0; else realv = realv * ((nv - 0.1) / nv);
 		adjust(realp, figuredemo.r1, realv, &mptch);
 		if (mptch.sz) realv = realv * 0.8;
 		realp = realp + realv;
@@ -1198,17 +1198,18 @@ void _restart1(bool ifload = 0) {
 		if (FP <= 50.0) HP -= 0.01;
 		if (FP <= 10.0) HP -= 0.05;
 
+		//开始绘制地图
+		clearscreen(backgroundColor);
+		paintmap();
+		figure.setposition(realp - stagep+vector2(_winw/2,_winh/2));
+		figure.paint();
+
 #ifdef DEBUGGING
 		test2 += (GetTickCount() - testtick);
 		test2n++;
 		testtick = GetTickCount();
 #endif
 
-		//开始绘制地图
-		clearscreen(backgroundColor);
-		paintmap();
-		figure.setposition(realp - stagep+vector2(_winw/2,_winh/2));
-		figure.paint();
 		paintmist(min(0.4, 1.0*mist / 130000) * sin(2 * pi*tick / 500) + min(0.8, 2.0*mist / 130000));
 
 #ifdef DEBUGGING
