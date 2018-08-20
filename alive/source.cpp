@@ -564,7 +564,14 @@ void paintmist(double p) {
 	beginPdot();
 	int a = (int)round((1.0-p)*128);
 	byte b = (BYTE)round(p * 150);
-	for (int i = _pDataSize - 1; i >= 0; --i) {
+	int i = _pDataSize - 1;
+	for (; i >= 3; i-=4) {
+		BYTE&P0 = _pData[i]; P0 = (BYTE)(a*P0 >> 7) + b;
+		BYTE&P1 = _pData[i-1]; P1 = (BYTE)(a*P1 >> 7) + b;
+		BYTE&P2 = _pData[i-2]; P2 = (BYTE)(a*P2 >> 7) + b;
+		BYTE&P3 = _pData[i-3]; P3 = (BYTE)(a*P3 >> 7) + b;
+	}
+	for (; i >= 0; --i) {
 		BYTE&P = _pData[i]; P = (BYTE)(a*P >> 7) + b;
 	}
 	endPdot();
@@ -1586,6 +1593,7 @@ int WINAPI WinMain(
 	LPSTR lpCmdline,
 	int nCmdshow
 ) {
+
 	if (checkprev("Alive"))return 0;
 	initwin(hInstance, 800, 600, "Alive");
 	showwin(nCmdshow);
