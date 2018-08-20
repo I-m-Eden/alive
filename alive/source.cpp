@@ -478,8 +478,8 @@ void paintgaining(p_pvi obj, double pct) {
 	if (name == IDTREE2) setf(RGB(100,160,0));
 	if (name == IDSTONE) setf(0x727272);
 	double demoR = getobjR(name);
-	fpie((int)round(p.x - demoR), (int)round(p.y - demoR), 
-		(int)round(p.x + demoR), (int)round(p.y + demoR),
+	fpie((int)round(p.x - demoR) + 1, (int)round(p.y - demoR) + 1, 
+		(int)round(p.x + demoR) - 1, (int)round(p.y + demoR) - 1,
 		x3,y3,x4,y4);
 }
 void paintmap() {
@@ -1132,11 +1132,11 @@ void _restart1(bool ifload = 0) {
 				updatempdisappear(IDTREE, 1200);
 			}
 			if (rand() % 50 == 0) {
-				if (rand() % 8 == 0)produceobj(IDTREE);
-				if (rand() % 6 == 0)produceobj(IDSTONE);
-				if (rand() % 12 == 0)produceobj(IDENEMY2);
+				if (rand() % 15 == 0)produceobj(IDTREE2);
+				if (rand() % 8 == 0)produceobj(IDSTONE);
+				if (rand() % 18 == 0)produceobj(IDENEMY2);
 				if (rand() % 100 == 0)produceobj(IDENEMY4);
-				if (rand() % 5 == 0)produceobj(IDENEMY5);
+				if (rand() % 20 == 0)produceobj(IDENEMY5);
 			}
 		}
 
@@ -1191,7 +1191,7 @@ void _restart1(bool ifload = 0) {
 
 		//修改mist, HP, FP值
 		mist += 1.5;
-		mist -= min(Ntree*0.01+Ntree2*0.015, mist*0.01);
+		mist -= min(Ntree*0.01+Ntree2*0.012, mist*0.01);
 		HP -= min((1.0*mist / 100000)*(1.0*mist / 100000)*0.2, 0.01);
 		if (HP<100.0)HP += 0.004;
 		FP -= 0.003;
@@ -1354,7 +1354,7 @@ void _restart() {
 	flushmouse();
 	Paintbmp(0, 0, _winw - 1, _winh - 1);
 	beginPdot();
-	double lightness = pi / 10;
+	double lightness = 0.4;
 	ref(i, 0, 600)ref(j, 200, 600) {
 		COLORREF c = hsl2rgb(1.0*i / 600, 1.0*j / 600, lightness);
 		Pdot(i + 40, j - 80, c);
@@ -1478,7 +1478,7 @@ void _main() {
 		t.textcolor = rgb(i, i, i);
 		t.paint();
 		flushpaint();
-		delay(6);
+		delay(5);
 	}
 	delay(100);
 
@@ -1503,7 +1503,10 @@ void _main() {
 	while(1) {
 		bool flag = 0;
 		ref(i, 0, _winw - 1)ref(j, 0, _winh - 1)
-			if (Sqp[i][j] < 100)Sqp[i][j] += 4, flag=1;
+			if (Sqp[i][j] < 100) {
+				Sqp[i][j] = min(Sqp[i][j] + 8, 100);
+				flag = 1;
+			}
 		if (!flag)break;
 		paintbmp(0, 0, _winw - 1, _winh - 1);
 		flushpaint();

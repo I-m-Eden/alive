@@ -68,7 +68,7 @@ public:
 	COLORREF fc;
 	double r;
 	treeimage() {
-		ps = 0; pw = 0; pc = BLACK;
+		ps = 0; pw = 1; pc = BLACK;
 		fc = RGB(90,220,90);
 		r = 46;
 		x = y = 0;
@@ -90,7 +90,7 @@ public:
 	COLORREF fc;
 	double r;
 	tree2image() {
-		ps = 0; pw = 0; pc = BLACK;
+		ps = 0; pw = 2; pc = RGB(100,100,100);
 		fc = RGB(100,200,0);
 		r = 54;
 		x = y = 0;
@@ -112,7 +112,7 @@ public:
 	COLORREF fc;
 	int r;
 	stoneimage() {
-		ps = 0; pw = 0; pc = BLACK;
+		ps = 0; pw = 1; pc = BLACK;
 		fc = 0xA9A9AC;
 		r = 30;
 		x = y = 0;
@@ -273,7 +273,7 @@ public:
 	COLORREF fc;
 	double r;
 	bullet2image() {
-		fc = RGB(40, 160, 100);
+		fc = RGB(20, 120, 100);
 		r = 4;
 		x = y = 0;
 	}
