@@ -96,7 +96,7 @@ bool peekmsg();											//尝试取出消息
 bool iswndactive();										//窗体是否处于激活状态
 bool iskeydown();										//是否按键
 bool iskeydown(int x);									//是否按键x
-WPARAM getkeydown();										//获取按键消息
+WPARAM getkeydown();									//获取按键消息
 bool islbuttondown();									//是否按下鼠标左键
 bool islbuttonup();										//是否松开鼠标左键
 bool isrbuttondown();									//是否按下鼠标右键
@@ -135,6 +135,7 @@ COLORREF hsl2rgb(double h,double s,double l);			//hsl转rgb
 void inversehsl(double&h, double&s, double&l);			//反转hsl
 COLORREF inversecolor(COLORREF c);						//反转颜色
 COLORREF inversergb(COLORREF c);						//反转rgb
+COLORREF mixrgb(COLORREF a, COLORREF b, double pct);	//按一定比例混合颜色
 COLORREF gdot(int x, int y);							//获取像素颜色
 void pdot(int x, int y, COLORREF c);					//画像素点
 void setd(int pstyle, int pwidth, COLORREF pc);			//设置线条风格
@@ -383,6 +384,12 @@ void flushPdot() { SetDIBits(_hDCMem, _hBMMem, 0, _bInfo.bmiHeader.biHeight, _pD
 void endPdot() { flushPdot(); delete[]_pData; }
 COLORREF gdot(int x, int y) { return GetPixel(_hDCMem, x, y); }
 COLORREF inversergb(COLORREF c) { return 0xffffff-c; }
+COLORREF mixrgb(COLORREF a, COLORREF b, double pct) {
+	double Pct = 1.0 - pct;
+	return RGB((int)round(pct*GetRValue(a) + Pct * GetRValue(b)), 
+		(int)round(pct*GetGValue(a) + Pct * GetGValue(b)), 
+		(int)round(pct*GetBValue(a) + Pct * GetBValue(b)));
+}
 void inversehsl(double&h, double&s, double&l) { h += 0.5; s += 0.5; l += 0.5; if (h >= 1)h -= 1; if (s >= 1)s -= 1; if (l >= 1)l -= 1; }
 COLORREF inversecolor(COLORREF c) {
 	double h, s, l; rgb2hsl(c, h, s, l);

@@ -151,7 +151,7 @@ public:
 		pcircle((int)round(x), (int)round(y), (int)round(sr));
 	}
 }fruitdemo;
-class enemyimage {
+class enemy1image {
 private:
 	POINT S[50];
 	int ps1, pw1; COLORREF pc1;
@@ -207,26 +207,39 @@ private:
 	{ -29,-5 },
 	{ -33,-4 }
 	};
+	double RW, RH, R;
+	COLORREF FC1, FC2, PC1, PC2; double SZ;
 public:
 	COLORREF fc1, fc2;
 	double angle;
 	double rw, rh, r;
-	enemyimage(double sz) {
-		rw = 42.0; rh = 65.0; r = min(rw, rh);
-		ps1 = 0; pw1 = 0; pc1 = 0x788870;
-		fc1 = 0xA0B0A0;
-		ps2 = 0; pw2 = 0; pc2 = 0xB2EB79;
-		fc2 = 0x8FCF4F;
-		angle = 0; setsize(sz);
+	enemy1image(double sz) {
+		SZ = sz;
+		RW = rw = 42.0*sz; RH = rh = 65.0*sz; R = r = min(rw, rh);
+		ps1 = 0; pw1 = 0; PC1 = pc1 = 0x788870;
+		FC1 = fc1 = 0xA0B0A0;
+		ps2 = 0; pw2 = 0; PC2 = pc2 = 0xB2EB79;
+		FC2 = fc2 = 0x8FCF4F;
+		angle = 0;
 		x = y = 0;
-		for (int i = Sn/2+1; i < Sn; ++i)
+		for (int i = Sn / 2 + 1; i < Sn; ++i)
 			s[i] = s[Sn - i], s[i].x = -s[i].x;
 	}
 	void setsize(double Sz) {
-		sz = Sz; rw = rw * sz; rh = rh * sz; r = r * sz;
+		sz = SZ * Sz; rw = RW * Sz; rh = RH * Sz; r = R * Sz;
 	}
 	void setposition(double X, double Y) {
 		x = X; y = Y;
+	}
+	void mixcolor(COLORREF c, double pct) {
+		fc1 = mixrgb(FC1, c, pct);
+		fc2 = mixrgb(FC2, c, pct);
+		pc1 = mixrgb(PC1, c, pct);
+		pc2 = mixrgb(PC2, c, pct);
+	}
+	void resetcolor() {
+		fc1 = FC1; fc2 = FC2; 
+		pc1 = PC1; pc2 = PC2;
 	}
 	void paint() {
 		double ca = cos(angle), sa = sin(angle);
@@ -303,24 +316,35 @@ private:
 		{-3,-10},
 		{-3,5}
 	};
+	COLORREF FC1, FC2, PC1, PC2;
+	double RW, RH, R; double SZ;
 public:
 	COLORREF fc1, fc2;
 	double angle;
 	double rw, rh, r;
-	enemy2image() {
-		rw = 30.0; rh = 35.0; r = min(rw, rh);
-		ps1 = 0; pw1 = 0; pc1 = 0x788870;
-		fc1 = rgb(237, 220, 12);
-		ps2 = 0; pw2 = 0; pc2 = 0xB2EB79;
-		fc2 = rgb(240, 187, 77);
-		angle = 0; setsize(0.5);
+	enemy2image(double Sz) {
+		SZ = sz = Sz; RW = rw = 30.0*sz; RH = rh = 35.0*sz; R = r = min(rw, rh);
+		ps1 = 0; pw1 = 0; PC1 = pc1 = 0x788870;
+		FC1 = fc1 = rgb(237, 220, 12);
+		ps2 = 0; pw2 = 0; PC2 = pc2 = 0xB2EB79;
+		FC2 = fc2 = rgb(240, 187, 77);
+		angle = 0; 
 		x = y = 0;
 	}
 	void setsize(double Sz) {
-		sz = Sz; rw = rw * sz; rh = rh * sz; r = r * sz;
+		sz = SZ * Sz; rw = RW * Sz; rh = RH * Sz; r = R * Sz;
 	}
 	void setposition(double X, double Y) {
 		x = X; y = Y;
+	}
+	void mixcolor(COLORREF c, double pct) {
+		fc1 = mixrgb(FC1, c, pct);
+		fc2 = mixrgb(FC2, c, pct);
+		pc1 = mixrgb(PC1, c, pct);
+		pc2 = mixrgb(PC2, c, pct);
+	}
+	void resetcolor() {
+		fc1 = FC1; fc2 = FC2; pc1 = PC1; pc2 = PC2;
 	}
 	void paint() {
 		double ca = cos(angle), sa = sin(angle);
@@ -340,30 +364,50 @@ public:
 		setf(fc2);
 		ppolygon(S, 3);
 	}
-}enemy2demo;
+}enemy2demo(0.5);
 class enemy4image {
 private:
 	int ps1, pw1; COLORREF pc1;
 	int ps2, pw2; COLORREF pc2;
 	double x, y;
 	double sz;
+	COLORREF FC1, FC2, FC3, FC4, PC1, PC2;
+	double R, R2; double SZ;
 public:
-	COLORREF fc1, fc2;
+	COLORREF fc1, fc2, fc3, fc4;
 	double angle;
 	double r, r2;
 	enemy4image() {
-		r = 30; r2 = 25;
-		ps1 = 0; pw1 = 0; pc1 = rgb(130, 70, 200);
-		ps2 = 0; pw2 = 0; pc2 = rgb(110, 50, 180);
-		fc1 = rgb(130, 70, 200); fc2 = rgb(110, 50, 180);
-		angle = 0; setsize(1.0);
+		SZ = sz = 1.0;
+		R = r = 30 * sz; R2 = r2 = 25 * sz;
+		ps1 = 0; pw1 = 0; PC1 = pc1 = rgb(130, 70, 200);
+		ps2 = 0; pw2 = 0; PC2 = pc2 = rgb(110, 50, 180);
+		FC1 = fc1 = rgb(130, 70, 200); FC2 = fc2 = rgb(110, 50, 180);
+		FC3 = fc3 = rgb(90, 30, 160); FC4 = fc4 = rgb(70, 10, 140);
+		angle = 0;
 		x = y = 0;
 	}
+	void switchfc() {
+		swap(fc1, fc2); swap(FC1, FC2);
+		swap(fc3, fc4); swap(FC3, FC4);
+	}
 	void setsize(double Sz) {
-		sz = Sz; r = r * sz; r2 = r2 * sz;
+		sz = sz * Sz; r = R * Sz; r2 = R2 * Sz;
 	}
 	void setposition(double X, double Y) {
 		x = X; y = Y;
+	}
+	void mixcolor(COLORREF c, double pct) {
+		fc1 = mixrgb(FC1, c, pct);
+		fc2 = mixrgb(FC2, c, pct);
+		fc3 = mixrgb(FC3, c, pct);
+		fc4 = mixrgb(FC4, c, pct);
+		pc1 = mixrgb(PC1, c, pct);
+		pc2 = mixrgb(PC2, c, pct);
+	}
+	void resetcolor() {
+		fc1 = FC1; fc2 = FC2; fc3 = FC3; fc4 = FC4;
+		pc1 = PC1; pc2 = PC2;
 	}
 	void paint() {
 		double ca = cos(angle), sa = sin(angle);
@@ -389,25 +433,37 @@ private:
 	int ps2, pw2; COLORREF pc2; double x2, y2;
 	double x, y;
 	double sz;
+	COLORREF FC1, FC2, PC2;
+	double R, D1, R2;
+	double X11, X12, Y11, Y12, X2, Y2; double SZ;
 public:
 	COLORREF fc1, fc2;
 	double angle;
 	double r, d1, r2;
 	enemy5image() {
-		d1 = 60; r2 = 5; r = 20;
-		ps2 = 0; pw2 = 0; pc2 = rgb(110, 110, 180);
-		fc1 = rgb(0, 200, 200); fc2 = rgb(110, 110, 180);
+		SZ = sz = 1.0;
+		D1 = d1 = 60; R2 = r2 = 5; R = r = 20;
+		ps2 = 0; pw2 = 0; PC2 = pc2 = rgb(110, 110, 180);
+		FC1 = fc1 = rgb(0, 200, 200); FC2 = fc2 = rgb(110, 110, 180);
 		angle = 0; setsize(1.0);
-		x11 = 0; y11 = -25; x12 = 0; y12 = 25;
-		x2 = 0; y2 = -13;
+		X11 = x11 = 0; Y11 = y11 = -25; X12 = x12 = 0; Y12 = y12 = 25;
+		X2 = x2 = 0; Y2 = y2 = -13;
 	}
 	void setsize(double Sz) {
-		sz = Sz; r = r * sz; d1 = d1 * sz; r2 = r2 * sz;
-		x11 *= sz; x12 *= sz; y11 *= sz; y12 *= sz;
-		x2 *= sz; y2 *= sz;
+		sz = sz * Sz; r = R * Sz; d1 = D1 * Sz; r2 = R2 * Sz;
+		x11 = X11 * Sz; x12 = X12 * Sz; y11 = Y11 * Sz; y12 = Y12 * Sz;
+		x2 = X2 * Sz; y2 = Y2 * Sz;
 	}
 	void setposition(double X, double Y) {
 		x = X; y = Y;
+	}
+	void mixcolor(COLORREF c, double pct) {
+		fc1 = mixrgb(FC1, c, pct);
+		fc2 = mixrgb(FC2, c, pct);
+		pc2 = mixrgb(PC2, c, pct);
+	}
+	void resetcolor() {
+		fc1 = FC1; fc2 = FC2; pc2 = PC2;
 	}
 	void paint() {
 		double ca = cos(angle), sa = sin(angle);
@@ -426,9 +482,9 @@ private:
 	BYTE pt[130][130][3];
 	double x, y;
 	int ps1, pw1; COLORREF pc1;
-	int ps2, pw2, pc2, fc2;
+	int ps2, pw2, pc2;
 	double x1, y1, r1, x2, y2, r2;
-	int ps3, pw3, pc3, fc3;
+	int ps3, pw3, pc3;
 	double x3, y3, r3;
 	double sz;
 	void getrgbtsp(BYTE&r, BYTE&g, BYTE&b, BYTE  R, BYTE G, BYTE B, double tsp) {
@@ -436,19 +492,21 @@ private:
 		g = BYTE(tsp * g + (1 - tsp) * G); 
 		b = BYTE(tsp * b + (1 - tsp) * B);
 	}
+	COLORREF PC1, PC2, PC3;
+	COLORREF FC1, FC2, FC3;
 public:
-	COLORREF fc1;
+	COLORREF fc1, fc2, fc3;
 	double angle;
 	double r; int R;
 	double tsp;
 	boss1image() {
 		r = 50; R = (int)round(r + 10);
-		ps1 = 0; pw1 = 0; pc1 = rgb(200, 80, 0);
-		fc1 = rgb(200, 80, 30);
-		ps2 = 0; pw2 = 3; pc2 = rgb(0, 0, 0);
-		fc2 = rgb(220, 220, 220);
-		ps3 = 0; pw3 = 2; pc3 = rgb(200, 80, 0);
-		fc3 = rgb(220, 220, 220);
+		ps1 = 0; pw1 = 0; PC1 = pc1 = rgb(200, 80, 0);
+		FC1 = fc1 = rgb(200, 80, 30);
+		ps2 = 0; pw2 = 3; PC2 = pc2 = rgb(0, 0, 0);
+		FC2 = fc2 = rgb(220, 220, 220);
+		ps3 = 0; pw3 = 2; PC3 = pc3 = rgb(200, 80, 0);
+		FC3 = fc3 = rgb(220, 220, 220);
 		angle = 0; setsize(1.0); settransparent(1.0);
 		x = y = 0;
 		x1 = r * 0.1; y1 = r * 0.4; r1 = r /4;
@@ -466,6 +524,18 @@ public:
 	}
 	void settransparent(double Tsp) {
 		tsp = Tsp;
+	}
+	void mixcolor(COLORREF c, double pct) {
+		fc1 = mixrgb(FC1, c, pct);
+		fc2 = mixrgb(FC2, c, pct);
+		fc3 = mixrgb(FC3, c, pct);
+		pc1 = mixrgb(PC1, c, pct);
+		pc2 = mixrgb(PC2, c, pct);
+		pc3 = mixrgb(PC3, c, pct);
+	}
+	void resetcolor() {
+		fc1 = FC1; fc2 = FC2; fc3 = FC3;
+		pc1 = PC1; pc2 = PC2; pc3 = PC3;
 	}
 	void paint() {
 		if (fabs(tsp - 1.0) > 1e-4) {
@@ -543,36 +613,54 @@ double getenemylife(int ID) {
 	if (ID == IDENEMY5)return 3;
 	return -1;
 }
-void paintenemy(int ID, vector2 p, double ang) {
+void paintenemy(int ID, vector2 p, double ang, double pct = 1.0, COLORREF bkc = 0, double sz = 1.0) {
 	if (ID == IDENEMY1) {
 		enemy1demo.setposition(p.x, p.y);
 		enemy1demo.angle = ang;
+		enemy1demo.mixcolor(bkc, pct);
+		enemy1demo.setsize(sz);
 		enemy1demo.paint();
+		enemy1demo.resetcolor();
 	}
 	if (ID == IDENEMY2) {
 		enemy2demo.setposition(p.x, p.y);
 		enemy2demo.angle = ang;
+		enemy2demo.mixcolor(bkc, pct);
+		enemy2demo.setsize(sz);
 		enemy2demo.paint();
+		enemy2demo.resetcolor();
 	}
 	if (ID == IDENEMY3) {
 		enemy3demo.setposition(p.x, p.y);
 		enemy3demo.angle = ang;
+		enemy3demo.mixcolor(bkc, pct);
+		enemy3demo.setsize(sz);
 		enemy3demo.paint();
+		enemy3demo.resetcolor();
 	}
 	if (ID == IDENEMY4) {
 		enemy4demo.setposition(p.x, p.y);
 		enemy4demo.angle = ang;
+		enemy4demo.mixcolor(bkc, pct);
+		enemy4demo.setsize(sz);
 		enemy4demo.paint();
+		enemy4demo.resetcolor();
 	}
 	if (ID == IDBOSS1) {
 		boss1demo.setposition(p.x, p.y);
 		boss1demo.angle = ang;
+		boss1demo.mixcolor(bkc, pct);
+		boss1demo.setsize(sz);
 		boss1demo.paint();
+		boss1demo.resetcolor();
 	}
 	if (ID == IDENEMY5) {
 		enemy5demo.setposition(p.x, p.y);
 		enemy5demo.angle = ang;
+		enemy5demo.mixcolor(bkc, pct);
+		enemy5demo.setsize(sz);
 		enemy5demo.paint();
+		enemy5demo.resetcolor();
 	}
 }
 double getobjR(int ID) {

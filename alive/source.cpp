@@ -44,20 +44,20 @@ public:
 	int ID;
 	double ang;
 	double life;
-	int tmp;
-	enemyinf() { ID = -1; ang = 0; life = 0; tmp = 0; }
-	enemyinf(int _id, double _ang, double _life) { ID = _id; ang = _ang; life = _life; tmp = 0; }
+	int tmp[2];
+	enemyinf() { ID = -1; ang = 0; life = 0; tmp[0] = tmp[1] = 0; }
+	enemyinf(int _id, double _ang, double _life) { ID = _id; ang = _ang; life = _life; tmp[0] = tmp[1] = 0; }
 	enemyinf(int _id, double _ang) {
 		ID = _id;
 		ang = _ang;
 		life = getenemylife(ID);
-		tmp = 0;
+		tmp[0] = tmp[1] = 0;
 	}
 	enemyinf(int _id) {
 		ID = _id;
 		ang = 1.0*(rand() % 628) / 100;
 		life = getenemylife(ID);
-		tmp = 0;
+		tmp[0] = tmp[1] = 0;
 	}
 };
 class bulletinf {
@@ -128,6 +128,7 @@ void producemap();
 vector2 randomposition(int name);
 void produceobj(int name);
 void paintgaining(p_pvi obj, double pct);
+void paintenemystate(int id, vector2 p, double ang, int tmp);
 void paintmap();
 void paintmist(double p);
 void updatebullet();
@@ -482,10 +483,22 @@ void paintgaining(p_pvi obj, double pct) {
 		(int)round(p.x + demoR) - 1, (int)round(p.y + demoR) - 1,
 		x3,y3,x4,y4);
 }
+void paintenemystate(int id, vector2 p, double ang, int tmp) /* without boss */ {
+	if (isenemyid(id)) {
+		double pct;
+		if (tmp == 0)pct = 1;
+		if (tmp < 0)pct = -1.0*tmp / 12;
+		if (tmp > 0)pct = 1.0 - 1.0*tmp / 20;
+		double sz;
+		if (tmp >= 0)sz = 1.0;
+		if (tmp < 0)sz = 1.0 + 1.0*(10 + tmp) / 20;
+		paintenemy(id, p, ang, pct, backgroundColor, sz);
+	}
+}
 void paintmap() {
 	getsighted(); getsightedenemy();
 	/*画边界*/{
-		setf(GRAY180);
+		setf(mixrgb(backgroundColor, GRAY180, 0.3));
 		vector2 v1 = vector2(mx1, my1) - stagep + vector2(_winw / 2, _winh / 2);
 		vector2 v2 = vector2(mx2, my2) - stagep + vector2(_winw / 2, _winh / 2);
 		if (v1.x >= 0)fbar(0, 0, (int)round(v1.x), _winh);
@@ -538,13 +551,9 @@ void paintmap() {
 	for (p_ppve i = mpeobj.s->R; !i->isend; i = i->R) {
 		vector2 p = i->s->s.first - stagep + vector2(_winw / 2, _winh / 2);
 		int id = i->s->s.second.ID;
-		if (i->s->s.second.ID == IDENEMY4 && i->s->s.second.tmp > 0) {
-			COLORREF FC = enemy4demo.fc1;
-			enemy4demo.fc1 = inversergb(FC);
-			paintenemy(id, p, i->s->s.second.ang);
-			enemy4demo.fc1 = FC;
-		}
-		else paintenemy(id, p, i->s->s.second.ang);
+		if (i->s->s.second.ID == IDENEMY4 && i->s->s.second.tmp[0] > 0) enemy4demo.switchfc();
+		paintenemystate(id, p, i->s->s.second.ang, i->s->s.second.tmp[1]);
+		if (i->s->s.second.ID == IDENEMY4 && i->s->s.second.tmp[0] > 0) enemy4demo.switchfc();
 	}
 	for (p_pvv i = mpbullet.s->R; !i->isend; i=i->R) {
 		vector2 p = (*i).s.first - stagep + vector2(_winw / 2, _winh / 2);
@@ -552,8 +561,8 @@ void paintmap() {
 		paintbullet(id, p);
 	}
 	if (ifboss1) {
-		if (boss1.second.tmp < 400) {
-			boss1demo.settransparent(1.0*(400 - boss1.second.tmp) / 400);
+		if (boss1.second.tmp[0] < 400) {
+			boss1demo.settransparent(1.0*(400 - boss1.second.tmp[0]) / 400);
 			paintenemy(IDBOSS1, boss1.first - stagep + vector2(_winw / 2, _winh / 2), boss1.second.ang);
 		}
 		else boss1demo.settransparent(1.0);
@@ -701,9 +710,9 @@ void makeenemy3route(pve&s) {
 	s.first = p; s.second.ang = sa;
 }
 void makeenemy4route(pve&s) {
-	if (s.second.tmp > 0) {
-		s.second.tmp--;
-		if (!s.second.tmp) {
+	if (s.second.tmp[0] > 0) {
+		s.second.tmp[0]--;
+		if (!s.second.tmp[0]) {
 			s.second.life = s.second.life*0.8;
 			pve S = s; S.second.ang = S.second.ang+pi;
 			insertmpenemy(S);
@@ -711,7 +720,7 @@ void makeenemy4route(pve&s) {
 		return;
 	}
 	if (rand() % 2000 == 0 && s.second.life>1.0) {
-		s.second.tmp = 500;
+		s.second.tmp[0] = 500;
 		return;
 	}
 
@@ -749,15 +758,15 @@ void makeenemy5route(pve&s) {
 		while (sa < 0)sa += 2 * pi; while (sa > 2 * pi)sa -= 2 * pi;
 		s.second.ang = sa + pi / 2;
 	}
-	if (s.second.tmp > 0) {
-		s.second.tmp--;
+	if (s.second.tmp[0] > 0) {
+		s.second.tmp[0]--;
 		if (rand() % 30 == 0) {
 			mpbullet.insert(make_pair(s.first, bulletinf(IDBULLET2, sa)));
 		}
 		return;
 	}
 	if (np <= 600 && rand() % 200 == 0) {
-		s.second.tmp = 120;
+		s.second.tmp[0] = 120;
 		return;
 	}
 
@@ -790,16 +799,28 @@ void updateenemy() {
 	}
 }
 void updatebullethurt() {
+	for (p_pve it = mpenemy.begin(); !it->isend; it = it->R) {
+		pve&t = it->s; int id = t.second.ID;
+		if (t.second.tmp[1] > 0)t.second.tmp[1] --;
+		if (t.second.tmp[1] < 0) {
+			t.second.tmp[1]++;
+			if (t.second.tmp[1] == 0) {
+				it = it->L, erasempenemy(it->R);
+			}
+		}
+	}
 	for (p_pvv it1 = mpbullet.begin(); !it1->isend; it1 = it1->R) {
-		 pvv t1 = (*it1).s; int ID = t1.second.ID;
+		pvv t1 = (*it1).s; int ID = t1.second.ID;
 		if (ID == IDBULLET) {
 			for (p_pve it2 = mpenemy.begin(); !it2->isend; it2 = it2->R) {
-				pve t2 = it2->s; int id = t2.second.ID;
+				pve&t2 = it2->s; int id = t2.second.ID;
+				if (t2.second.tmp[1] < 0)continue;
 				if (norm(t1.first - t2.first) <= getenemyR(id) + bulletdemo.r) {
 					it1 = it1->L; mpbullet.erase(it1->R);
-					it2->s.second.life -= 1.0;
-					if (it2->s.second.life < 1e-6) {
-						erasempenemy(it2);
+					t2.second.life -= 1.0;
+					t2.second.tmp[1] = 10;
+					if (t2.second.life < 1e-6) {
+						t2.second.tmp[1] = -10;
 						if (id == IDENEMY1) {
 							insertmpenemy(make_pair(t2.first, enemyinf(IDENEMY3, t2.second.ang - pi / 2)));
 							insertmpenemy(make_pair(t2.first, enemyinf(IDENEMY3, t2.second.ang + pi / 3)));
@@ -906,9 +927,11 @@ void updateQ(bool isQ) {
 void updatetouchenemy() {
 	if (mpetch.sz > 0)injuredtick = tick;
 	for (p_ppve it = mpetch.begin(); !it->isend; it = it->R) {
+		if (it->s->s.second.tmp[1] < 0)continue;
 		int id = it->s->s.second.ID;
 		HP -= getenemyatk(id);
-		erasempenemy(it->s);
+		it->s->s.second.life = 0; 
+		it->s->s.second.tmp[1] = -10;
 	}
 	mpetch.clear();
 }
@@ -950,10 +973,10 @@ void updateboss1() {
 	boss1.second.life -= 0.003;
 	if (boss1.second.life <= 1e-4) {
 		boss1.second.life = 0.0;
-		if (boss1.second.tmp < 400) {
-			boss1.second.tmp++;
-			boss1.second.ang += 1.0*boss1.second.tmp / 600;
-			double pt = 1.0*boss1.second.tmp / 400;
+		if (boss1.second.tmp[0] < 400) {
+			boss1.second.tmp[0]++;
+			boss1.second.ang += 1.0*boss1.second.tmp[0] / 600;
+			double pt = 1.0*boss1.second.tmp[0] / 400;
 			double dR = pt*(GetRValue(GRAYGREEN) - GetRValue(GRAY200)) + 200;
 			double dG = pt*(GetGValue(GRAYGREEN) - GetGValue(GRAY200)) + 200;
 			double dB = pt*(GetBValue(GRAYGREEN) - GetBValue(GRAY200)) + 200;
@@ -999,7 +1022,7 @@ void updatempdisappear(int id, int pt) {
 	for (p_pvi i = mp.begin(); !i->isend; i = i->R) {
 		vector2 p = i->s.first - stagep + vector2(_winw / 2, _winh / 2); int name = i->s.second;
 		if (name == id && rand() % pt == 0 && !sighted(p, name)) {
-			i = i->L; mp.erase(i->R); continue; 
+			i = i->L; erasemp(i->R); continue; 
 		}
 	}
 }
