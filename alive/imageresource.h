@@ -64,17 +64,25 @@ class treeimage {
 private:
 	int ps, pw;COLORREF pc;
 	double x, y;
+	COLORREF FC, PC;
 public:
 	COLORREF fc;
 	double r;
 	treeimage() {
-		ps = 0; pw = 2; pc = RGB(20, 150, 20);
-		fc = RGB(90,220,90);
+		ps = 0; pw = 2; PC = pc = RGB(20, 150, 20);
+		FC = fc = RGB(90,220,90);
 		r = 46;
 		x = y = 0;
 	}
 	void setposition(double X, double Y) {
 		x = X; y = Y;
+	}
+	void mixcolor(COLORREF bkc, double pct) {
+		fc = mixrgb(FC, bkc, pct);
+		pc = mixrgb(PC, bkc, pct);
+	}
+	void resetcolor() {
+		fc = FC; pc = PC;
 	}
 	void paint() {
 		setd(ps, pw, pc);
@@ -86,17 +94,25 @@ class tree2image {
 private:
 	int ps, pw; COLORREF pc;
 	double x, y;
+	COLORREF FC, PC;
 public:
 	COLORREF fc;
 	double r;
 	tree2image() {
-		ps = 0; pw = 3; pc = RGB(30,130,0);
-		fc = RGB(100,200,0);
+		ps = 0; pw = 3; PC = pc = RGB(30,130,0);
+		FC = fc = RGB(100,200,0);
 		r = 54;
 		x = y = 0;
 	}
 	void setposition(double X, double Y) {
 		x = X; y = Y;
+	}
+	void mixcolor(COLORREF bkc, double pct) {
+		fc = mixrgb(FC, bkc, pct);
+		pc = mixrgb(PC, bkc, pct);
+	}
+	void resetcolor() {
+		fc = FC; pc = PC;
 	}
 	void paint() {
 		setd(ps, pw, pc);
@@ -108,17 +124,25 @@ class stoneimage {
 private:
 	int ps, pw; COLORREF pc;
 	double x, y;
+	COLORREF PC, FC;
 public:
 	COLORREF fc;
 	int r;
 	stoneimage() {
-		ps = 0; pw = 2; pc = rgb(100, 100, 100);
-		fc = RGB(170, 170, 170);
+		ps = 0; pw = 2; PC = pc = rgb(100, 100, 100);
+		FC = fc = RGB(170, 170, 170);
 		r = 30;
 		x = y = 0;
 	}
 	void setposition(double X, double Y) {
 		x = X; y = Y;
+	}
+	void mixcolor(COLORREF bkc, double pct) {
+		fc = mixrgb(FC, bkc, pct);
+		pc = mixrgb(PC, bkc, pct);
+	}
+	void resetcolor() {
+		fc = FC; pc = PC;
 	}
 	void paint() {
 		setd(ps, pw, pc);
@@ -130,17 +154,27 @@ class fruitimage {
 private:
 	int ps, pw; COLORREF pc, spc;
 	double x, y;
+	COLORREF PC, SPC, FC, SFC;
 public:
 	COLORREF fc, sfc;
 	double r, sr;
 	fruitimage() {
-		ps = 0; pw = 0; pc = RGB(250, 210, 70); spc = RGB(250, 250, 100);
-		fc = RGB(200, 160, 20); sfc = RGB(200, 230, 50);
+		ps = 0; pw = 0; PC = pc = RGB(250, 210, 70); SPC = spc = RGB(250, 250, 100);
+		FC = fc = RGB(200, 160, 20); SFC = sfc = RGB(200, 230, 50);
 		r = 12; sr = 6;
 		x = y = 0;
 	}
 	void setposition(double X, double Y) {
 		x = X; y = Y;
+	}
+	void mixcolor(COLORREF bkc, double pct) {
+		fc = mixrgb(FC, bkc, pct);
+		pc = mixrgb(PC, bkc, pct);
+		sfc = mixrgb(SFC, bkc, pct);
+		spc = mixrgb(SPC, bkc, pct);
+	}
+	void resetcolor() {
+		fc = FC; pc = PC;
 	}
 	void paint() {
 		setd(ps, pw, pc);
@@ -695,6 +729,32 @@ void paintbullet(int ID, vector2 p) {
 	if (ID == IDBULLET2) {
 		bullet2demo.setposition(p.x, p.y);
 		bullet2demo.paint();
+	}
+}
+void paintobj(int ID, vector2 p, double pct = 1.0, COLORREF bkc = 0) {
+	if (ID == IDTREE) {
+		treedemo.setposition(p.x, p.y);
+		treedemo.mixcolor(bkc, pct);
+		treedemo.paint();
+		treedemo.resetcolor();
+	}
+	if (ID == IDTREE2) {
+		tree2demo.setposition(p.x, p.y);
+		tree2demo.mixcolor(bkc, pct);
+		tree2demo.paint();
+		tree2demo.resetcolor();
+	}
+	if (ID == IDSTONE) {
+		stonedemo.setposition(p.x, p.y);
+		stonedemo.mixcolor(bkc, pct);
+		stonedemo.paint();
+		stonedemo.resetcolor();
+	}
+	if (ID == IDFRUIT) {
+		fruitdemo.setposition(p.x, p.y);
+		fruitdemo.mixcolor(bkc, pct);
+		fruitdemo.paint();
+		fruitdemo.resetcolor();
 	}
 }
 const double maxobjR = max(max(max(treedemo.r, stonedemo.r), fruitdemo.r),tree2demo.r);

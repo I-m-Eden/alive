@@ -29,6 +29,7 @@ using namespace std;
 #define ref(i,x,y)for(int i=(x);i<=(y);++i)
 #define def(i,x,y)for(int i=(x);i>=(y);--i)
 const double pi = acos(-1);
+const double eps = 1e-5;
 string constr(int s) {
 	string res = "";
 	if (s < 0)res = "-" + constr(-s); else
@@ -72,16 +73,21 @@ public:
 		else restp = vector2(0, 0);
 	}
 };
-typedef pair<vector2, int> pvi; 
-typedef pair<vector2, double> pvd;
+class objinf {
+public:
+	int ID;
+	double pct;
+	int tmp;
+	objinf() { ID = -1; pct = 0; tmp = 0; }
+	objinf(int _id) { ID = _id; pct = 0; tmp = 0; }
+};
+typedef pair<vector2, objinf> pvi; 
 typedef pair<vector2, bulletinf> pvv;
 typedef pair<vector2, enemyinf> pve;
 typedef lst<pvi>* p_pvi;
-typedef lst<pvd>* p_pvd;
 typedef lst<pve>* p_pve;
 typedef lst<pvv>* p_pvv;
 typedef lst<p_pvi>* p_ppvi;
-typedef lst<p_pvd>* p_ppvd;
 typedef lst<p_pve>* p_ppve;
 typedef lst<p_pvv>* p_ppvv;
 typedef lst<int>* p_i;
@@ -106,7 +112,7 @@ bool ifboss1; int boss1tick; pve boss1; vector2 boss1stage;
 vector2 stagep;
 COLORREF backgroundColor;
 //额外变量
-p_pvi gainobj; double gainpct;
+p_pvi lastQobj;
 int shoottimes, tick, injuredtick, shoottick;
 //辅助变量
 linkst<p_pvi> mpobj, mptch;
@@ -118,6 +124,8 @@ void declineN(int id);
 void increaseN(int id);
 void insertmp(pvi s);
 void insertmpenemy(pve s);
+void erasemp(p_pvi it);
+void erasempenemy(p_pve it);
 void mapclear();
 void initgame();
 void loadgame();
@@ -127,17 +135,17 @@ vector2 randompos(int x1,int y1,int x2,int y2);
 void producemap();
 vector2 randomposition(int name);
 void produceobj(int name);
-void paintgaining(p_pvi obj, double pct);
+void paintobjstate(p_pvi obj);
 void paintenemystate(int id, vector2 p, double ang, int tmp);
 void paintmap();
 void paintmist(double p);
-void updatebullet();
 void adjust(vector2 rp, double range, vector2&v, linkst<p_pvi>* S);
 void makeenemy1route(pve&s);
 void makeenemy2route(pve&s);
 void makeenemy3route(pve&s);
 void makeenemy4route(pve&s);
 void makeenemy5route(pve&s);
+void updatebullet();
 void updateenemy();
 void updatebullethurt();
 void updatefruit();
@@ -290,14 +298,14 @@ void increaseN(int id) {
 void insertmp(pvi s) {
 	p_pvi it = mp.insert(s);
 	kdpos[it] = mpkd.insert(s.first, it);
-	increaseN(s.second);
+	increaseN(s.second.ID);
 }
 void insertmpenemy(pve s) {
 	p_pve it = mpenemy.insert(s);
 	increaseN(s.second.ID);
 }
 void erasemp(p_pvi it) {
-	declineN(it->s.second);
+	declineN(it->s.second.ID);
 	pair<kdnode<p_pvi>*, p_ppvi> &s = kdpos[it];
 	s.first->s.erase(s.second); kdpos.erase(it);
 	mp.erase(it);
@@ -344,8 +352,8 @@ void loadgame()
 	int n, x; double a, b, c, d;
 	fin >> figure.r1 >> realp.x >> realp.y >> realv.x >> realv.y >> n;
 	ref(i, 1, n) {
-		fin >> a >> b >> x;
-		insertmp(make_pair(vector2(a, b), x));
+		objinf e; fin >> a >> b >> e.ID >> e.pct >> e.tmp;
+		insertmp(make_pair(vector2(a, b), e));
 	}
 	fin >> n;
 	ref(i, 1, n) {
@@ -354,8 +362,8 @@ void loadgame()
 	}
 	fin >> n;
 	ref(i, 1, n) {
-		fin >> a >> b >> c >> d; int e; fin >> e;
-		mpbullet.insert(make_pair(vector2(a, b), bulletinf(e, vector2(c, d))));
+		bulletinf e;  fin >> a >> b >> e.restp.x >> e.restp.y >> e.ID;
+		mpbullet.insert(make_pair(vector2(a, b), e));
 	}
 	fin >> number_wood >> number_stone;
 	fin >> velocity >> velocityenemy1 >> velocityenemy2 >> velocityenemy3 >> velocityenemy4 >> velocityenemy5 >>
@@ -387,7 +395,8 @@ void savegame()
 	fout << realp.x << " "<<realp.y << " "<<realv.x << " "<<realv.y << endl;
 	fout << mp.sz << endl;
 	for (p_pvi it = mp.s->R; !it->isend; it = it->R)
-		fout << (*it).s.first.x << " " << (*it).s.first.y << " " << (*it).s.second << endl;
+		fout << (*it).s.first.x << " " << (*it).s.first.y << " " <<
+		(*it).s.second.ID << " " << (*it).s.second.pct << " " << (*it).s.second.tmp << endl;
 	fout << mpenemy.sz << endl;
 	for (p_pve it = mpenemy.s->R; !it->isend; it = it->R)
 		fout << (*it).s.first.x << " " << (*it).s.first.y << " " << 
@@ -448,31 +457,14 @@ void produceobj(int name) {
 	if (isenemyid(name))
 		insertmpenemy(make_pair(p, enemyinf(name)));
 }
-void paintgaining(p_pvi obj, double pct) {
+void paintobjstate(p_pvi obj) {
 	if (obj==nullptr)return;
 	vector2 P = realp; if (ifboss1)P = boss1stage;
-	int name = (*obj).s.second;
-	if (name == IDTREE) {
-		COLORREF c = treedemo.fc; BYTE R = GetRValue(c), G = GetGValue(c), B = GetBValue(c);
-		double CG = 3.0 / 4 * (1.0 - gainpct);
-		COLORREF cc = RGB(R*CG, G*CG, B*CG);
-		treedemo.fc = cc; treedemo.paint(); treedemo.fc = c;
-	}
-	if (name == IDTREE2) {
-		COLORREF c = tree2demo.fc; BYTE R = GetRValue(c), G = GetGValue(c), B = GetBValue(c);
-		double CG = 3.0 / 4 * (1.0 - gainpct);
-		COLORREF cc = RGB(R*CG, G*CG, B*CG);
-		tree2demo.fc = cc; tree2demo.paint(); tree2demo.fc = c;
-	}
-	if (name == IDSTONE) {
-		COLORREF c = stonedemo.fc; BYTE R = GetRValue(c), G = GetGValue(c), B = GetBValue(c);
-		double CG = 3.0 / 4 * (1.0 - gainpct);
-		COLORREF cc = RGB(R*CG, G*CG, B*CG);
-		stonedemo.fc = cc; stonedemo.paint(); stonedemo.fc = c;
-	}
-	if (pct <= 0)return;
-	pct = pct * pi * 2;
 	vector2 p = (*obj).s.first - P + vector2(_winw / 2, _winh / 2);
+	int name = (*obj).s.second.ID; double pct = (*obj).s.second.pct; int tmp = (*obj).s.second.tmp;
+	if (tmp == 1) paintobj(name, p, 3.0 / 4 * (1.0 - pct), mixrgb(backgroundColor, 0, 0.3)); else paintobj(name, p);
+	if (pct <= eps)return;
+	pct = pct * pi * 2;
 	int x3 = (int)round(p.x + 1), y3 = (int)round(p.y);
 	int x4 = (int)round(p.x + cos(pct) * 100), y4 = (int)round(p.y - sin(pct) * 100);
 	if (name == IDTREE) setf(RGB(70,180,60));
@@ -512,41 +504,25 @@ void paintmap() {
 	for (int i = 0, Y = (20 - int(stagep.y) % 20); i < 30; ++i, Y += 20)
 		pline(0, Y, _winw, Y);
 	for (p_ppvi i = mpobj.begin(); !i->isend; i=i->R) {
-		int name = (i->s)->s.second;
-		if (name == IDSTONE) {
-			vector2 p = (i->s)->s.first - stagep + vector2(_winw / 2, _winh / 2);
-			stonedemo.setposition(p.x, p.y);
-			if ((i->s) == gainobj) paintgaining(gainobj, gainpct);
-			else stonedemo.paint();
-		}
+		int name = (i->s)->s.second.ID;
+		if (name == IDSTONE) paintobjstate(i->s);
 	}
 	for (p_ppvi i = mpobj.s->R; !i->isend; i=i->R) {
-		int name = (i->s)->s.second;
-		if (name == IDTREE) {
-			vector2 p = (i->s)->s.first - stagep + vector2(_winw / 2, _winh / 2);
-			treedemo.setposition(p.x, p.y);
-			if ((i->s) == gainobj) paintgaining(gainobj, gainpct);
-			else treedemo.paint();
-		}
+		int name = (i->s)->s.second.ID;
+		if (name == IDTREE) paintobjstate(i->s);
 	}
+	
 	int tr = tree2demo.r;
 	if (ifboss1)tree2demo.r = min(tr, boss1tick);
 	for (p_ppvi i = mpobj.s->R; !i->isend; i = i->R) {
-		int name = (i->s)->s.second;
-		if (name == IDTREE2) {
-			vector2 p = (i->s)->s.first - stagep + vector2(_winw / 2, _winh / 2);
-			tree2demo.setposition(p.x, p.y);
-			if ((i->s) == gainobj) paintgaining(gainobj, gainpct);
-			else tree2demo.paint();
-		}
+		int name = (i->s)->s.second.ID;
+		if (name == IDTREE2) paintobjstate(i->s);
 	}
 	if (ifboss1)tree2demo.r = tr;
+
 	for (p_ppvi i = mpobj.s->R; !i->isend; i = i->R) {
-		pvi obj = (i->s)->s; vector2 p = obj.first - stagep + vector2(_winw / 2, _winh / 2); int name = obj.second;
-		if (name == IDFRUIT) {
-			fruitdemo.setposition(p.x, p.y);
-			fruitdemo.paint();
-		}
+		int name = (i->s)->s.second.ID;
+		if (name == IDFRUIT) paintobjstate(i->s);
 	}
 	for (p_ppve i = mpeobj.s->R; !i->isend; i = i->R) {
 		vector2 p = i->s->s.first - stagep + vector2(_winw / 2, _winh / 2);
@@ -595,7 +571,7 @@ void updatebullet() {
 		vector2 A = a + b * (1.0 / norm(b))*V;
 		vector2 B = b - b * (1.0 / norm(b))*V;
 		it->s = make_pair(A, bulletinf(id, B));
-		if ((b*B) < 1e-9)it=it->L,mpbullet.erase(it->R);
+		if ((b*B) < eps)it=it->L,mpbullet.erase(it->R);
 	}
 }
 void adjust(vector2 rp, double range, vector2&v, linkst<p_pvi>* S) {
@@ -603,7 +579,7 @@ void adjust(vector2 rp, double range, vector2&v, linkst<p_pvi>* S) {
 		double a0 = 1e9, a1 = 1e9;
 		double normv = norm(v);
 		for (p_ppvi i = S->begin(); !i->isend; i = i->R) {
-			int name = (i->s)->s.second;
+			int name = (i->s)->s.second.ID;
 			if (name == IDFRUIT)continue;
 			vector2 p = (i->s)->s.first - rp; double normp = norm(p);
 			if (normp<=range+getobjR(name)-1) {
@@ -819,7 +795,7 @@ void updatebullethurt() {
 					it1 = it1->L; mpbullet.erase(it1->R);
 					t2.second.life -= 1.0;
 					t2.second.tmp[1] = 10;
-					if (t2.second.life < 1e-6) {
+					if (t2.second.life < eps) {
 						t2.second.tmp[1] = -10;
 						if (id == IDENEMY1) {
 							insertmpenemy(make_pair(t2.first, enemyinf(IDENEMY3, t2.second.ang - pi / 2)));
@@ -842,17 +818,17 @@ void updatebullethurt() {
 }
 void updatefruit() {
 	for (p_pvi it = mp.begin(); !it->isend; it = it->R) {
-		if (it->s.second == IDTREE && rand()%10000==0) {
+		if (it->s.second.ID== IDTREE && rand()%10000==0) {
 			double ang = 1.0*(rand() % 10000) / 10000 * pi * 2;
 			vector2 v(cos(ang), sin(ang)); v = v * (treedemo.r + fruitdemo.r);
 			insertmp(make_pair(it->s.first + v, IDFRUIT));
 		}
-		if (it->s.second == IDTREE2 && rand() % 8000 == 0) {
+		if (it->s.second.ID == IDTREE2 && rand() % 8000 == 0) {
 			double ang = 1.0*(rand() % 10000) / 10000 * pi * 2;
 			vector2 v(cos(ang), sin(ang)); v = v * (tree2demo.r + fruitdemo.r);
 			insertmp(make_pair(it->s.first + v, IDFRUIT));
 		}
-		if (it->s.second == IDFRUIT && rand() % 30000 == 0) {
+		if (it->s.second.ID == IDFRUIT && rand() % 30000 == 0) {
 			it = it->L; erasemp(it->R);
 		}
 	}
@@ -860,7 +836,7 @@ void updatefruit() {
 void getsighted() {
 	mpobj.create();
 	for (p_pvi i = mp.begin(); !i->isend; i=i->R) {
-		vector2 p = i->s.first - stagep + vector2(_winw / 2, _winh / 2); int name = i->s.second;
+		vector2 p = i->s.first - stagep + vector2(_winw / 2, _winh / 2); int name = i->s.second.ID;
 		if (!sighted(p, name))continue;
 		mpobj.insert(i);
 	}
@@ -878,7 +854,7 @@ void gettouch() {
 	double range = maxobjR + figuredemo.r1;
 	mpkd.collectitem(&mptch, realp, range);
 	for (p_ppvi i = mptch.begin(); !i->isend; i=i->R) {
-		vector2 p = i->s->s.first - realp; int name = i->s->s.second;
+		vector2 p = i->s->s.first - realp; int name = i->s->s.second.ID;
 		double normp = norm(p);
 		if (normp < getobjR(name) + figuredemo.r1 - 1)continue;
 		i = i->L; mptch.erase(i->R);
@@ -895,32 +871,37 @@ void gettouchenemy() {
 void updateQ(bool isQ) {
 	p_pvi id = nullptr;
 	for (p_ppvi i = mptch.begin(); !i->isend; i = i->R)
-		if ((i->s) == gainobj) { id = (i->s); break; }
+		if ((i->s) == lastQobj) { id = (i->s); break; }
 	if (id != nullptr) {
-		if (isQ) gainpct += velocityexploit;
-		else gainpct = 0;
+		if (isQ) id->s.second.pct += velocityexploit;
+		else id->s.second.pct = 0;
 	}
 	else {
+		if (lastQobj != nullptr) {
+			lastQobj->s.second.pct = 0;
+			lastQobj->s.second.tmp = 0;
+		}
 		for (p_ppvi i = mptch.begin(); !i->isend; i = i->R) {
-			int name = ((i->s)->s).second;
-			if (name == IDTREE || name == IDSTONE) {
-				id = (i->s); break; 
-			}
+			int name = ((i->s)->s).second.ID;
+			if (name == IDTREE || name == IDSTONE) { id = (i->s); break; }
 			if (name == IDTREE2 && !ifboss1) { id = (i->s); break; }
 		}
-		gainpct = 0;
+		if (id != nullptr) {
+			id->s.second.pct = 0;
+			id->s.second.tmp = 1;
+		}
+		lastQobj = id;
 	}
-	gainobj = id;
-	if (isQ) {
-		if (gainpct >= 1.0) {
-			if (gainobj->s.second == IDTREE) FP -= 2;
-			if (gainobj->s.second == IDTREE2) FP -= 2;
-			if (gainobj->s.second == IDSTONE) FP -= 3;
-			if (gainobj->s.second == IDTREE) number_wood++, mist += 200;
-			if (gainobj->s.second == IDTREE2) number_wood += 2, mist += 240;
-			if (gainobj->s.second == IDSTONE) number_stone++, mist += 480;
-			erasemp(gainobj);
-			gainobj = nullptr; gainpct = 0;
+	if (lastQobj!=nullptr) {
+		if (lastQobj->s.second.pct >= 1.0) {
+			if (lastQobj->s.second.ID == IDTREE) FP -= 2;
+			if (lastQobj->s.second.ID == IDTREE2) FP -= 2;
+			if (lastQobj->s.second.ID == IDSTONE) FP -= 3;
+			if (lastQobj->s.second.ID == IDTREE) number_wood++, mist += 200;
+			if (lastQobj->s.second.ID == IDTREE2) number_wood += 2, mist += 240;
+			if (lastQobj->s.second.ID == IDSTONE) number_stone++, mist += 480;
+			erasemp(lastQobj);
+			lastQobj = nullptr;
 		}
 	}
 }
@@ -937,7 +918,7 @@ void updatetouchenemy() {
 }
 void updateeatfruit() {
 	for (p_ppvi it = mptch.begin(); !it->isend; it = it->R) {
-		if (it->s->s.second == IDFRUIT) {
+		if (it->s->s.second.ID == IDFRUIT) {
 			FP = FP + 10; if (FP >= 100.0)FP = 100.0;
 			erasemp(it->s); it = it->L; mptch.erase(it->R);
 		}
@@ -971,7 +952,7 @@ void updateboss1() {
 	if (boss1stage.x > mx2 - _winw / 2)boss1stage.x -= 5;
 	if (boss1stage.y > my2 - _winh / 2)boss1stage.y -= 5;
 	boss1.second.life -= 0.003;
-	if (boss1.second.life <= 1e-4) {
+	if (boss1.second.life <= eps) {
 		boss1.second.life = 0.0;
 		if (boss1.second.tmp[0] < 400) {
 			boss1.second.tmp[0]++;
@@ -1020,7 +1001,7 @@ void updateboss1() {
 }
 void updatempdisappear(int id, int pt) {
 	for (p_pvi i = mp.begin(); !i->isend; i = i->R) {
-		vector2 p = i->s.first - stagep + vector2(_winw / 2, _winh / 2); int name = i->s.second;
+		vector2 p = i->s.first - stagep + vector2(_winw / 2, _winh / 2); int name = i->s.second.ID;
 		if (name == id && rand() % pt == 0 && !sighted(p, name)) {
 			i = i->L; erasemp(i->R); continue; 
 		}
@@ -1069,7 +1050,7 @@ void _restart1(bool ifload = 0) {
 	ns_shop::_inputshopdata();
 
 	//额外变量初始化
-	gainobj = nullptr; gainpct = 0;
+	lastQobj = nullptr;
 	shoottimes = 0; tick = 0, injuredtick = (int)-1e9, shoottick = (int)-1e9;
 
 	//计时器变量
